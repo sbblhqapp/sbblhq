@@ -25,3 +25,6 @@
 ## 2026-05-21 - [React Rendering & Memory Optimization]
 **Learning:** Avoid using array spread syntax `[...a, ...b]` directly inside React render or hook dependencies when searching for elements via `.find()`, as it creates unnecessary O(N) array allocations on every render or dependency change.
 **Action:** Replace the spread and combined `.find()` with sequentially short-circuited searches (e.g., `a.find(...) ?? b.find(...)`) to save memory and CPU cycles.
+## 2026-05-23 - [React Rendering Loop Optimization]
+**Learning:** Found an array reduction operation (`subtotal = bagItems.reduce(...)`) located beneath an early return (`if (!bagOpen) return null;`) in a React component's rendering flow. Because React hooks cannot be called conditionally or after early returns, extracting this O(N) calculation into `useMemo` required hoisting the operation above the early return to satisfy the Rules of Hooks.
+**Action:** When extracting large or repeated O(N) functional loops into `useMemo` hooks, ensure the hook is placed unconditionally at the top level of the component before any early returns.

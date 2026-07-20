@@ -25,3 +25,9 @@
 ## 2026-05-21 - [React Rendering & Memory Optimization]
 **Learning:** Avoid using array spread syntax `[...a, ...b]` directly inside React render or hook dependencies when searching for elements via `.find()`, as it creates unnecessary O(N) array allocations on every render or dependency change.
 **Action:** Replace the spread and combined `.find()` with sequentially short-circuited searches (e.g., `a.find(...) ?? b.find(...)`) to save memory and CPU cycles.
+## 2026-06-27 - [Performance] Optimized Store Checkout Loop
+**Learning:** During array `.reduce()` operations in React components (like cart or checkout totals), running an un-memoized reduce inline causes it to execute on every render, which is an (N)$ operation. Even when replacing nested  with (1)$ lookups, the outer loop still runs.
+**Action:** Always wrap large or repeated (N)$ array reduction calculations (like ) in a `useMemo` block if they occur inside the render flow of a functional component to avoid recalculating unnecessarily.
+## 2024-03-24 - [Performance] Optimized Subtotal Calculation in Checkout Loop
+**Learning:** Running an un-memoized `reduce` inline in a React component causes the O(N) array reduction to execute on every single render cycle, wasting CPU cycles and potentially causing jank.
+**Action:** Always wrap O(N) array reduction calculations (like `bagItems.reduce`) in a `useMemo` block when they occur inside the render flow of a functional component, providing the source arrays as dependencies to avoid recalculating unnecessarily.

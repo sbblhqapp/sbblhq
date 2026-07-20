@@ -27,12 +27,16 @@ export const BagDrawer = () => {
     }, {} as Record<string, typeof products[0]>);
   }, [products]);
 
-  if (!bagOpen) return null;
+  // ⚡ Bolt Performance Optimization: Extract expensive O(N) subtotal reduction
+  // from the render loop into useMemo to prevent recalculating on every render.
+  const subtotal = useMemo(() => {
+    return bagItems.reduce((sum, id) => {
+      const product = productMap[id];
+      return sum + (product?.price ?? 0);
+    }, 0);
+  }, [bagItems, productMap]);
 
-  const subtotal = bagItems.reduce((sum, id) => {
-    const product = productMap[id];
-    return sum + (product?.price ?? 0);
-  }, 0);
+  if (!bagOpen) return null;
 
   const handleCheckout = async () => {
     if (!session) { toast.error('Sign in to complete your purchase.'); return; }

@@ -7,8 +7,8 @@ import { Product } from '@/types';
 import { X, Trash2, ShoppingBag, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const BagDrawer = () => {
-  const { bagOpen, setBagOpen, bagItems, removeFromBag } = useBag();
+const BagDrawerContent = () => {
+  const { setBagOpen, bagItems, removeFromBag } = useBag();
   const { session } = useAuth();
   const [checkingOut, setCheckingOut] = useState(false);
 
@@ -27,12 +27,12 @@ export const BagDrawer = () => {
     }, {} as Record<string, typeof products[0]>);
   }, [products]);
 
-  if (!bagOpen) return null;
-
-  const subtotal = bagItems.reduce((sum, id) => {
+  // ⚡ Bolt Performance Optimization: Wrap subtotal calculation in useMemo
+  // to avoid recalculating on every render.
+  const subtotal = useMemo(() => bagItems.reduce((sum, id) => {
     const product = productMap[id];
     return sum + (product?.price ?? 0);
-  }, 0);
+  }, 0), [bagItems, productMap]);
 
   const handleCheckout = async () => {
     if (!session) { toast.error('Sign in to complete your purchase.'); return; }
@@ -131,4 +131,14 @@ export const BagDrawer = () => {
       </div>
     </div>
   );
+};
+
+export const BagDrawer = () => {
+  const { bagOpen } = useBag();
+
+  // ⚡ Bolt Performance Optimization: Extract bag drawer content into a separate component
+  // to prevent expensive query/reduction hooks from running in the background when the drawer is closed.
+  if (!bagOpen) return null;
+
+  return <BagDrawerContent />;
 };

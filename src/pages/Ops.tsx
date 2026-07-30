@@ -89,6 +89,13 @@ function OpsCsvImportSection({ kind, csvUpload, csvLeagueId, setCsvLeagueId, isS
     }
   };
 
+  // ⚡ Bolt Performance Optimization: Extract expensive O(N) array filtering
+  // from the render loop into useMemo to prevent recalculating on every render.
+  const activeQueue = useMemo(
+    () => csvUpload.queue.filter(q => q.type === kind),
+    [csvUpload.queue, kind]
+  );
+
   return (
     <div className="panel p-4 space-y-3 max-w-2xl">
       <div>
@@ -163,12 +170,12 @@ function OpsCsvImportSection({ kind, csvUpload, csvLeagueId, setCsvLeagueId, isS
       )}
 
       {/* Offline Ingest Queue */}
-      {csvUpload.queue.filter(q => q.type === kind).length > 0 && (
+      {activeQueue.length > 0 && (
         <div className="mt-4 p-3 bg-secondary rounded-sm border border-border">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
               <Shield className="w-3.5 h-3.5" />
-              Offline Ingest Queue ({csvUpload.queue.filter(q => q.type === kind).length})
+              Offline Ingest Queue ({activeQueue.length})
             </h3>
             <button
               onClick={() => csvUpload.flushQueue()}
@@ -179,7 +186,7 @@ function OpsCsvImportSection({ kind, csvUpload, csvLeagueId, setCsvLeagueId, isS
             </button>
           </div>
           <div className="space-y-1.5 max-h-48 overflow-auto">
-            {csvUpload.queue.filter(q => q.type === kind).map((item) => (
+            {activeQueue.map((item) => (
               <div key={item.id} className="flex items-center justify-between text-2xs bg-card p-2 rounded-sm border border-border/50">
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="font-semibold text-foreground truncate uppercase">{item.type} Upload</div>

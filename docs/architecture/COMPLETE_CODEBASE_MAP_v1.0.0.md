@@ -1,8 +1,8 @@
-<!-- Version: v1.1.0 | Date: 2026-05-11 | Status: Current -->
+<!-- Version: v1.1.1 | Date: 2026-08-09 | Status: Current -->
 # SBBL HQ — Complete Codebase Map
 
-**Version:** v1.1.0
-**Last Updated:** 2026-05-11
+**Version:** v1.1.1
+**Last Updated:** 2026-08-09
 **Owner:** APEX Business Systems Ltd. — Engineering Lead
 
 ## Overview
@@ -99,7 +99,7 @@ Path	Component	Auth	Description
 /onboarding	Onboarding	RequireAuth	Profile setup wizard
 /billing	Billing	RequireAuth	Payment history
 /settings	Settings	RequireAuth	User settings
-/ops	Ops	RequireAdmin	Admin console (10 tabs)
+/ops	Ops	RequireAdmin	Admin console (10 tabs for super_admin; 9 for league_admin — Store Media tab hidden, see CLAUDE.md rule 12)
 /support	Support	Public	Support/contact
 /privacy	PrivacyPolicy	Public	
 /terms	TermsOfService	Public	
@@ -213,7 +213,15 @@ POST	/api/player/checkout	Player subscription checkout
 POST	/api/store/checkout	Direct store checkout
 POST	/api/store/quotes	Custom jersey quote request
 POST	/api/coach/request	Coach approval request
-Admin (league_admin+):
+**Verified against `src/worker/index.ts` / `src/worker/routes/ops-upload.ts` 2026-08-09.** The
+"Admin (league_admin+)" vs. "Super Admin only" split changed materially on that date — see
+`CLAUDE.md` rule 12 and
+[`omni-recall/wiki/corrections/2026-08-09-regular-admin-permission-model.md`](../../omni-recall/wiki/corrections/2026-08-09-regular-admin-permission-model.md).
+Two route names below (`/ops/store/media`, `/ops/potg/submit`) never existed under those paths in
+the current codebase and have been corrected to their real endpoints.
+
+Admin (league_admin+) — gated by `requireOpsAdminSession` (or the broader `requireAdminSession`,
+which also admits `team_manager`/`coach`/`media_operator`, for the AI-parse endpoints):
 
 Method	Path	Handler
 GET	/ops/bootstrap	Admin data bootstrap
@@ -225,28 +233,36 @@ GET	/ops/publish-jobs	Publish job queue
 GET	/ops/headshots	Headshot review queue
 GET	/ops/health	Worker health check
 GET	/ops/metrics-lite	Lightweight metrics
-Super Admin only:
+POST	/ops/imports/teams, /players, /schedules, /events	CSV + manual-form imports (`handleImportRoute`)
+POST	/ops/scores/game	Manual score entry (`handleScoreGameUpsert`)
+POST	/ops/scores/import	Scores CSV import (`handleScoresCsvImport`)
+POST	/ops/scores/parse-image	AI scoreboard image parsing (Groq Vision) — `requireAdminSession`
+POST	/ops/event/parse	AI event image parsing (Groq Vision) — `requireAdminSession`
+POST	/ops/potg/parse	AI POTG image parsing (Groq Vision) — `requireAdminSession`
+POST	/ops/players/find-or-create	Find-or-create player by name (`handleOpsFindOrCreatePlayer`, added 2026-08-09)
+POST	/ops/review/:id/resolve	Resolve review item — `requireAdminSession`
+POST	/ops/streams/comp-code	Generate comp code — league_admin capped at 5/rolling-24h (non-compounding), super_admin uncapped; see rule 12.3
+GET	/ops/streams/comp-code	List comp codes — league_admin sees only their own; super_admin sees all
+
+Super Admin only (unchanged by the 2026-08-09 permission-model update — live-PPV controls, store
+media, and role/access grants stay `requireSuperAdminSession`):
 
 Method	Path	Handler
 POST	/ops/streams/config	Update stream config
 POST	/ops/streams/status	Go live / end broadcast
 POST	/ops/streams/go-live	Atomic go-live (config + status)
-POST	/ops/streams/comp-code	Generate complimentary access code
-GET	/ops/streams/comp-code	List comp codes
 GET	/ops/access/lookup	User access lookup by email
 POST	/ops/access/override	Grant/revoke PPV access
-POST	/ops/review/:id/resolve	Resolve review item
-POST	/ops/imports/*	CSV imports (teams, players, schedules, events)
-POST	/ops/store/media	Upload store media
-POST	/ops/event/parse	AI event image parsing (Groq Vision)
-POST	/ops/potg/parse	AI POTG image parsing (Groq Vision)
-POST	/ops/potg/submit	Submit POTG
-POST	/ops/scores/*	Score management
 POST	/ops/coach/:id/resolve	Approve/reject coach requests
-POST	/webhooks/stripe	Stripe webhook handler (HMAC-SHA256 verified)
-POST	/webhooks/omnihub	`handleOmnihubWebhook` — OmniHub inbound command receiver (HMAC-SHA256 verified; 9-action allowlist; idempotency; risk-lane reclassification; audit)
-POST	/api/omniport/command	`handleOmniportCommand` — JWT-authenticated OmniHub operator diagnostic (PING, ECHO, HEALTH_CHECK, TELEMETRY_SNAPSHOT)
-POST	/sync/drain	`handleSyncDrain` — outbound sync drain; sends `{ packet, signature }` envelope via `deliverSyncEnvelope()` with X-Omni-* headers
+POST	/ops/products/batch	Batch-create store products (`handleOpsBatchProducts`) — the doc previously listed a nonexistent `/ops/store/media`
+PATCH, DELETE	/ops/products/:id	Store product edit/archive — escalated via `requireTableWriteSession`'s `STORE_ONLY_TABLES`, even on the shared CRUD path
+POST	/webhooks/stripe	Stripe webhook handler (HMAC-SHA256 verified — not role-gated)
+POST	/webhooks/omnihub	`handleOmnihubWebhook` — OmniHub inbound command receiver (HMAC-SHA256 verified; 9-action allowlist; idempotency; risk-lane reclassification; audit — not role-gated)
+POST	/api/omniport/command	`handleOmniportCommand` — JWT-authenticated OmniHub operator diagnostic (PING, ECHO, HEALTH_CHECK, TELEMETRY_SNAPSHOT — not role-gated)
+POST	/sync/drain	`handleSyncDrain` — outbound sync drain; sends `{ packet, signature }` envelope via `deliverSyncEnvelope()` with X-Omni-* headers (not role-gated)
+
+Note: `POST /ops/potg/submit` does not exist as a route. POTG submission goes through
+`POST /ops/ingest/submit` with `kind: 'potg'` (`handleIngestSubmit`), which is `requireAdminSession`-gated.
 
 ### OmniBridge Code Surfaces (PR #502 — added 2026-05-11)
 
@@ -370,16 +386,20 @@ Test Coverage
 6 E2E specs in e2e/
 5 k6 load tests in tests/k6/ (auth spike, checkout burst, live page, webhook stress)
 Stream validation pipeline in ops/validation/
-Ops Console (Ops.tsx, 1,925 lines)
-Admin panel with 10 tabs:
+Ops Console (Ops.tsx, 2,088 lines as of 2026-08-09)
+Admin panel with 10 tabs for super_admin; 9 for league_admin (Store Media
+hidden — see CLAUDE.md rule 12). As of 2026-08-09, Teams/Players/Schedules/
+Events/Roster-Import forms resolve League/Season/Division/Team/Player/Event/
+Schedule identifiers via `<select>` pickers instead of raw UUID text fields
+— see CLAUDE.md rule 13.
 
 Overview — Bootstrap data, system health
 Scores — Manual score entry, CSV import, AI scoreboard image parsing (Groq Vision)
-Teams — Team CRUD, CSV import
-Players — Player management, CSV import
-Schedules — Schedule management, CSV import
-Events — Event creation, AI image parsing
-Store Media — Product image upload
+Teams — Team CRUD, CSV import (league_admin+)
+Players — Player management incl. name-based find-or-create, CSV import (league_admin+)
+Schedules — Schedule management, CSV import (league_admin+)
+Events — Event creation, AI image parsing (league_admin+)
+Store Media — Product image upload (super_admin only)
 POTG Parser — AI-powered Player of the Game card extraction from scoreboard photos
 Media Library — Media publication management with drag ordering
 Import History — CSV import audit log

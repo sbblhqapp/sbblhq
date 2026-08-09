@@ -1,9 +1,9 @@
-<!-- Version: v1.7.0 | Date: 2026-04-19 | Status: Current -->
+<!-- Version: v1.7.1 | Date: 2026-08-09 | Status: Current -->
 # Stream Gating
 
-**Version:** v1.7.0
-**Previous:** v1.6.0 (2026-04-18)
-**Last Updated:** 2026-04-19
+**Version:** v1.7.1
+**Previous:** v1.7.0 (2026-04-19)
+**Last Updated:** 2026-08-09
 
 ## Entitlement Windows (canonical)
 
@@ -114,14 +114,25 @@ independent. A buyer who sees the session-ended message still has an
 active entitlement — they can start a fresh 6-hour session any time in
 the 48-hour window without re-purchasing.
 
-## Comp Code Flow (v1.6.0)
+## Comp Code Flow (v1.6.0; access model updated 2026-08-09)
 
-1. **Generate:** Super-admin opens the Admin Stream Overlay → Comp Code tab → enters optional note and
-   selects expiry → clicks Generate → `POST /ops/streams/comp-code` (super_admin only).
+1. **Generate:** Admin opens the Admin Stream Overlay → Comp Code tab → enters optional note and
+   selects expiry → clicks Generate → `POST /ops/streams/comp-code`.
+   - **API access (as of 2026-08-09):** `league_admin` or `super_admin` — gated by
+     `requireOpsAdminSession`, not `super_admin`-only. A regular admin is capped at
+     **5 codes per rolling 24 hours** (non-compounding); `super_admin` is uncapped.
+     Over-cap returns `429 comp_code_daily_limit_reached`. See `CLAUDE.md` rule 12.3.
+   - **⚠️ Known UI gap:** the only shipped entry point for this endpoint — the Admin
+     Stream Overlay on `/live` (`src/pages/Live.tsx`) — is still rendered
+     `{isSuperAdmin && (...)}`. The backend accepts `league_admin` today, but no UI
+     surface currently lets a regular admin reach it. A regular admin can call the
+     endpoint directly (e.g. via the Ops Console once a picker is added, or via a
+     direct API call) but cannot yet do so through any button in the app. Tracked as
+     a follow-up; not implemented as part of the 2026-08-09 permission-model change.
 2. **Worker:** Inserts a `ppv_invites` row with `is_comp = TRUE`, `note`, and `expires_at` (default
    48h — `ENTITLEMENT.MANUAL_COMP_VALIDITY_HOURS`; clamped to `[1, 168]`). No uniqueness constraint
    is applied across multiple comp codes for the same game.
-3. **Share:** The generated UUID code is displayed in a copy-to-clipboard card. Super-admin shares
+3. **Share:** The generated UUID code is displayed in a copy-to-clipboard card. The admin shares
    it with the intended viewer via any channel.
 4. **Redeem:** Viewer navigates to `/live` → sees the `AccessCodeRedeem` widget → enters code →
    `POST /ops/streams/invite/redeem` → Worker validates TTL, marks `status = 'used'`, returns

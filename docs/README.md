@@ -1,8 +1,8 @@
-<!-- Version: v2.6.0 | Date: 2026-07-18 | Status: Current -->
+<!-- Version: v2.7.0 | Date: 2026-08-09 | Status: Current -->
 # SBBL HQ — Documentation Hub
 
-**Version:** v2.6.0
-**Last Updated:** 2026-07-18
+**Version:** v2.7.0
+**Last Updated:** 2026-08-09
 **Maintainer:** APEX Business Systems Ltd. — Engineering Lead
 
 > Single source of truth for all SBBL HQ engineering, operational, and product documentation.
@@ -37,7 +37,7 @@ docs/
 | [ARCHITECTURE](./architecture/ARCHITECTURE_v1.2.0.md) | v1.2.0 | Full stack overview — Vite + React + Supabase + Cloudflare + Stripe + Sentry |
 | [DB SCHEMA](./architecture/DB_SCHEMA_v1.2.0.md) | v1.2.0 | Core schema + 28 migrations — tables, indexes, matviews, RLS helpers |
 | [API REFERENCE](./architecture/API_REFERENCE_v1.2.0.md) | v1.2.0 | Worker API endpoints, JWT-only auth, idempotency, full route inventory |
-| [COMPLETE CODEBASE MAP](./architecture/COMPLETE_CODEBASE_MAP_v1.0.0.md) | v1.0.0 | Full directory structure, route inventory, schema summary, ops console |
+| [COMPLETE CODEBASE MAP](./architecture/COMPLETE_CODEBASE_MAP_v1.0.0.md) | v1.1.1 | Full directory structure, route inventory, schema summary, ops console |
 | [CANONICAL DATA PIPELINE](./architecture/CANONICAL_DATA_PIPELINE_v1.0.0.md) | v1.0.0 | Authoritative upload → ingest → parse → store → render flow map |
 | [STORE ARCHITECTURE](./architecture/STORE_ARCHITECTURE_v1.0.0.md) | v1.0.0 | Edge-native commerce engine — canonical schema and purchase flows |
 | [STORE API CONTRACTS](./architecture/STORE_API_CONTRACTS_v1.0.0.md) | v1.0.0 | `/api/public/products`, `/api/store/checkout`, `/api/store/quotes` contracts |
@@ -66,6 +66,7 @@ docs/
 | [OAUTH HOTFIX RUNBOOK](./ops/OAUTH_HOTFIX_RUNBOOK.md) | v1.0.0 | Google OAuth enablement and troubleshooting |
 | [REPLAY MONETIZATION RUNBOOK](./ops/REPLAY_MONETIZATION_RUNBOOK.md) | v1.0.0 | Post-event replay monetization activation |
 | [WS2–WS7 RELEASE CHECKLIST](./ops/WS_RELEASE_CHECKLIST.md) | v1.0.0 | Feature-flag activation order and rollback for workstream releases |
+| [REPO MIGRATION 2026-08-09](./ops/REPO_MIGRATION_2026-08-09.md) | — | Canonical remote moved `apexbusiness-systems/sbbl-hq` → `sbblhqapp/sbblhq`; what moved, what didn't, secret re-provisioning, operator-script fixes |
 
 ---
 
@@ -85,7 +86,7 @@ docs/
 |---|---|---|
 | [STATS PIPELINE](./features/STATS_PIPELINE_v1.2.0.md) | v1.2.0 | 4-stage stat submission + materialized standings + react-window virtualization |
 | [BROADCAST OVERLAY & ENGAGEMENT](./features/BROADCAST_OVERLAY_ENGAGEMENT_v1.0.0.md) | v1.0.0 | Chromeless OBS overlay, polls/predictions/trivia, watch parties, sponsor rotation, AI weekly digest, OBS remote control |
-| [STREAM GATING](./features/STREAM_GATING_v1.7.0.md) | v1.7.0 | PPV entitlement, comp codes, universal URL detection, WHIP browser ingest, origin-aware CORS |
+| [STREAM GATING](./features/STREAM_GATING_v1.7.0.md) | v1.7.1 | PPV entitlement, comp codes, universal URL detection, WHIP browser ingest, origin-aware CORS |
 | [PIPELINE MAP](./features/PIPELINE_MAP_v1.3.0.md) | v1.3.0 | Super-Admin Ops Console data upload pipeline flowchart |
 
 ---

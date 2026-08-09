@@ -812,6 +812,17 @@ requests return `429 comp_code_daily_limit_reached`. Super admin is uncapped.
 Regular admins may list only the comp codes they generated themselves; the full
 comp ledger stays a super-admin view.
 
+**Known gap (tracked, not yet fixed):** the API accepts `league_admin` for
+`POST /ops/streams/comp-code`, but the only shipped UI entry point — the Admin
+Stream Overlay on `/live` (`src/pages/Live.tsx:1345`, `{isSuperAdmin && (...)}`)
+— still renders for `super_admin` only. A regular admin cannot reach comp-code
+generation through any button in the app yet. Documented in
+`docs/features/STREAM_GATING_v1.7.0.md`. Do not silently "fix" this by loosening
+the overlay's gate to `canModerateLive` — that would also expose the
+stream-config/go-live/access-override controls the overlay bundles alongside
+comp codes, all of which stay super-admin-only per §12.1. The correct fix is a
+comp-code-only entry point, not a broader overlay gate change.
+
 ### 13. Ops Console — no raw UUIDs, ever, in a form a regular admin can reach
 
 **Owner rule (2026-08-09).** Every Manual Ops create/delete/suspend/merge form

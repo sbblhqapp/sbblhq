@@ -34,9 +34,9 @@ type QueryApi = {
   then: (
     resolve: (value: QueryResponse<Row[]> | CountResponse) => unknown,
   ) => Promise<unknown>;
-  insert: (row: Row) => { select?: () => { single: () => Promise<QueryResponse<Row>> }; error: null };
+  insert: (row: Row | Row[]) => { select?: () => { single: () => Promise<QueryResponse<Row>> }; error: null };
   update: (patch: Row) => UpdateBuilder;
-  upsert: (row: Row) => { select: () => { single: () => Promise<QueryResponse<Row | null>> } };
+  upsert: (row: Row | Row[], opts?: { onConflict?: string }) => { select: () => { single: () => Promise<QueryResponse<Row | null>> } } | { error: null };
 };
 
 export const testEnv = {
@@ -86,12 +86,20 @@ export function createAdmin(
       },
       insert(row) {
         if (table === 'api_idempotency_keys') return { error: null };
-        const normalized = {
-          ...row,
-          id: row.id ?? crypto.randomUUID(),
-          code: row.code ?? crypto.randomUUID(),
-          created_at: row.created_at ?? new Date().toISOString(),
-        };
+        const normalizeOne = (r: Row) => ({
+          ...r,
+          id: r.id ?? crypto.randomUUID(),
+          code: r.code ?? crypto.randomUUID(),
+          created_at: r.created_at ?? new Date().toISOString(),
+        });
+        // Bulk insert (array payload, e.g. handleImportRoute) — no .select()
+        // chained by real callers of this path, so just persist and resolve.
+        if (Array.isArray(row)) {
+          const normalized = row.map(normalizeOne);
+          state[table] = [...(state[table] ?? []), ...normalized];
+          return { error: null } as unknown as ReturnType<QueryApi['insert']>;
+        }
+        const normalized = normalizeOne(row);
         state[table] = [...(state[table] ?? []), normalized];
         return { select: () => ({ single: async () => ({ data: normalized, error: null }) }), error: null };
       },
@@ -126,12 +134,22 @@ export function createAdmin(
           return { select: () => ({ single: async () => ({ data: null, error: { message: 'forced_upsert_error' } }) }) };
         }
         const rows = state[table] = state[table] ?? [];
-        const existing = table === 'stream_access_sessions'
-          ? rows.find((r) => r.user_id === row.user_id && (r.game_id ?? null) === (row.game_id ?? null) && r.idempotency_key === row.idempotency_key)
-          : rows.find((r) => r.id === row.id);
-        const target = existing ?? { ...row, id: row.id ?? crypto.randomUUID(), code: row.code ?? crypto.randomUUID() };
-        Object.assign(target, row);
-        if (!existing) rows.push(target);
+        const upsertOne = (r: Row) => {
+          const existing = table === 'stream_access_sessions'
+            ? rows.find((x) => x.user_id === r.user_id && (x.game_id ?? null) === (r.game_id ?? null) && x.idempotency_key === r.idempotency_key)
+            : rows.find((x) => x.id === r.id);
+          const target = existing ?? { ...r, id: r.id ?? crypto.randomUUID(), code: r.code ?? crypto.randomUUID() };
+          Object.assign(target, r);
+          if (!existing) rows.push(target);
+          return target;
+        };
+        // Bulk upsert (array payload, e.g. handleImportRoute) — no .select()
+        // chained by real callers of this path, so just persist and resolve.
+        if (Array.isArray(row)) {
+          row.forEach(upsertOne);
+          return { error: null } as unknown as ReturnType<QueryApi['upsert']>;
+        }
+        const target = upsertOne(row);
         return { select: () => ({ single: async () => ({ data: target, error: null }) }) };
       },
     };

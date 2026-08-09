@@ -12,12 +12,22 @@ export type ImportJob = {
   error_summary: string | null;
 };
 
+export type LeagueRef = { id: string; name: string; code: string };
+export type SeasonRef = { id: string; name: string; league_id: string };
+export type DivisionRef = { id: string; name: string; season_id: string };
+export type VenueRef = { id: string; name: string };
+
 export async function fetchOpsBootstrap() {
   return apiFetch<{
     ok: boolean;
     user: { userId: string; email: string | null };
     roles: string[];
-    references: Record<string, Array<{ id: string; name: string; code?: string }>>;
+    references: {
+      leagues: LeagueRef[];
+      seasons: SeasonRef[];
+      divisions: DivisionRef[];
+      venues: VenueRef[];
+    };
     importHistory: ImportJob[];
   }>('/ops/bootstrap');
 }
@@ -128,8 +138,56 @@ export async function importRoster(params: {
   });
 }
 
-export async function fetchOpsList(entity: 'teams' | 'players' | 'products' | 'events') {
+export async function fetchOpsList(entity: 'teams' | 'players' | 'products' | 'events' | 'schedules') {
   return apiFetch<{ ok: boolean; data: unknown[] }>(`/ops/list/${entity}`);
+}
+
+export type TeamRef = { id: string; name: string; league_id: string | null; status?: string };
+export type PlayerRef = {
+  id: string;
+  user_id: string;
+  team_id: string | null;
+  league_id: string | null;
+  display_name: string | null;
+  team_name: string | null;
+  is_suspended?: boolean;
+};
+export type EventRef = { id: string; title: string; league_id: string | null; starts_at: string | null };
+export type ScheduleRef = {
+  id: string;
+  league_id: string;
+  season_id: string;
+  starts_at: string;
+  status?: string;
+  league_code: string | null;
+  league_name: string | null;
+};
+
+/**
+ * Find-or-create a player by display name — replaces the old raw "User ID
+ * (UUID)" Create Player contract, which had no search endpoint to find an
+ * existing account with. Reuses the same name-based provisioning logic
+ * already proven by Roster Import / POTG ingest.
+ */
+export async function findOrCreatePlayer(params: {
+  name: string;
+  leagueId: string;
+  teamId?: string;
+  jerseyNumber?: string;
+  position?: string;
+}) {
+  return apiFetch<{
+    ok: boolean;
+    playerId: string;
+    userId: string;
+    provisioned: boolean;
+    warnings: string[];
+    player: Record<string, unknown>;
+  }>('/ops/players/find-or-create', {
+    method: 'POST',
+    headers: { [IDEMPOTENCY_HEADER]: createIdempotencyKey(`player-find-or-create-${params.name}-${params.leagueId}`) },
+    body: JSON.stringify(params),
+  });
 }
 
 // ── Media Editor (Admin) ──────────────────────────────────────────────────

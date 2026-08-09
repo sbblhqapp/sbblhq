@@ -812,6 +812,60 @@ requests return `429 comp_code_daily_limit_reached`. Super admin is uncapped.
 Regular admins may list only the comp codes they generated themselves; the full
 comp ledger stays a super-admin view.
 
+### 13. Ops Console — no raw UUIDs, ever, in a form a regular admin can reach
+
+**Owner rule (2026-08-09).** Every Manual Ops create/delete/suspend/merge form
+must resolve identifiers automatically. An operator without database access
+must never be asked to paste a League/Season/Division/Team/Player/Event/
+Schedule-slot ID.
+
+```tsx
+// ❌ BANNED — the exact pattern this rule replaced.
+<input placeholder="League ID (UUID) *" value={form.leagueId}
+  onChange={e => setForm(f => ({ ...f, leagueId: e.target.value }))} />
+```
+
+```tsx
+// ✅ CORRECT — League submits the LEAGUE_REGISTRY slug (same pattern the
+// POTG form already used); Season/Division/Team/Player/Event/Schedule use
+// the components in src/pages/Ops.tsx (LeagueSelect, SeasonSelect,
+// DivisionSelect, TeamSelect, PlayerSelect, EventSelect, ScheduleSelect),
+// backed by /ops/bootstrap `references` and the /ops/list/* endpoints.
+<LeagueSelect value={form.leagueId} onChange={(slug) => setForm(f => ({ ...f, leagueId: slug }))} />
+```
+
+#### 13.1 — League fields send a SLUG, never a UUID picked by the frontend
+
+`leagueId` submitted by every Ops form is the `LEAGUE_REGISTRY` slug
+(`'wbl'`/`'sbbl'`/`'tgifbl'`), resolved server-side via `resolveLeagueId`
+(rule 10). Season/Team dropdowns need the league's real UUID only to
+client-side FILTER their own options (`leagueUuidForSlug` in `Ops.tsx`) — that
+UUID is derived, never typed or displayed.
+
+#### 13.2 — `handleImportRoute`'s `INGEST_CONFIGS` must resolve `league_id` through `fetchLeagueMap`, not pass it through raw
+
+Every `resolvePayload` in `INGEST_CONFIGS` (teams/players/schedules/events)
+must consume the `leagueMap` argument. Before 2026-08-09, `players`/
+`schedules`/`events` silently ignored it and passed `row.league_id` straight
+through — a live rule-10 violation nobody caught until this audit. See
+`fetchLeagueMap`'s doc comment in `src/worker/routes/ops-upload.ts` for the
+original bug (case-sensitive `.in("code", …)` against uppercase-stored codes).
+
+#### 13.3 — Create Player has no UUID to require
+
+`POST /ops/players/find-or-create` (`handleOpsFindOrCreatePlayer`) reuses
+`resolvePotgPlayer` — the same name-based find-or-create already proven by
+Roster Import and POTG ingest. There is no "search for an existing user"
+endpoint and none should be added for this form; find-or-create by display
+name is the contract. Do not resurrect a raw `user_id` field on Create Player.
+
+**Enforcement:** `src/test/ops-console-uuid-free.test.tsx` (real DOM render,
+proves League→Season filtering actually resolves and Create Player never
+calls the old `manualOpsAction('player','create',{userId})` contract) and
+`src/test/worker-league-code-import-fix.test.ts` (real handler calls proving
+`fetchLeagueMap` resolves case-insensitively). Both suites are mutation-tested
+— see the incident entry below for the exact regressions each one catches.
+
 ## Architecture at a glance
 
 ```
@@ -892,6 +946,35 @@ npm run build       # production build (vite)
 CI runs all of these. Do not merge red.
 
 ## Incident history (relevant to this guide)
+
+- **2026-08-09** — Ops Console UUID-elimination + a live rule-10 violation
+  found in the audit. The Manual Ops forms (Teams/Players/Schedules/Events)
+  required regular admins to paste raw League/Season/Division/Team/Player/
+  Event/Schedule-slot UUIDs with no way to look one up — the operator-reported
+  trigger was `statssbbl@gmail.com` unable to use the console at all. Audit
+  also found `handleImportRoute`'s `players`/`schedules`/`events` configs
+  silently ignored the `leagueMap` argument passed to `resolvePayload` and
+  wrote `row.league_id` straight through — meaning a typed league code (or,
+  for `schedules`, ANY non-UUID value, since `scheduleRowSchema.league_id` was
+  `.uuid()`-strict) either 422'd or landed unresolved. Separately, the existing
+  `fetchLeagueMap` helper backing `teams`/`scores` did `.in("code",
+  uniqueCodes)` — case-sensitive exact match against uppercase-stored codes —
+  so a typed lowercase code (`"wbl"`) never matched and the raw string fell
+  into a `uuid` column (would 22P02 in production; masked in dev because the
+  fallback silently accepted the unresolved string). This is the same failure
+  class as the 2026-07-21 league-filter incident, just on the write path
+  instead of the read path. Root-caused this time by a proactive audit, not a
+  production 500. Fix: `fetchLeagueMap` rebuilt on the canonical
+  `resolveLeagueId`; all four `INGEST_CONFIGS` entries now actually consume
+  `leagueMap`; `scheduleRowSchema`/`eventRowSchema`/`playerRowSchema.league_id`
+  loosened from `.uuid()` to accept a code; new `POST
+  /ops/players/find-or-create` (reuses `resolvePotgPlayer`) replaces the raw
+  `user_id` Create Player field; new `GET /ops/list/schedules` and joined
+  display names on `GET /ops/list/players` back the new pickers. See rule
+  **13**. Verified via mutation testing: 4 separate deliberate breaks (gate
+  role check, comp-code cap comparison, `STORE_ONLY_TABLES`, and here
+  `leagueUuidForSlug`/`fetchLeagueMap`) each produced a distinct, correctly-
+  scoped test failure before being reverted — not just "tests are green."
 
 - **2026-08-09** — Repo migration to `sbblhqapp/sbblhq` + near-miss write to the
   wrong Supabase project. Two latent defects surfaced while migrating the remote

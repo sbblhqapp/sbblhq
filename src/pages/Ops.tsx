@@ -8,10 +8,12 @@ import { PotgCard } from '@/components/ui/PotgCard';
 import { MediaLibraryTab } from '@/components/OpsMediaLibrary';
 import {
   fetchOpsBootstrap, fetchImportHistory, fetchPipelineHealth, mergePlayerIdentities,
-  parseEventImage, parsePotgImage, manualOpsAction,
+  parseEventImage, parsePotgImage, manualOpsAction, fetchOpsList, findOrCreatePlayer,
   ingestPresign, ingestSubmit, ingestApprove, ingestReject,
   parseRosterImage, importRoster, type ParsedRosterPlayer,
   type MediaPublicationStatus, type OpsMediaPublication,
+  type LeagueRef, type SeasonRef, type DivisionRef,
+  type TeamRef, type PlayerRef, type EventRef, type ScheduleRef,
 } from '@/lib/api/ops';
 import { LEAGUE_REGISTRY } from '@/lib/leagues';
 import { canAccessOps, type AppRole } from '@/lib/auth/roles';
@@ -224,6 +226,164 @@ function OpsCsvImportSection({ kind, csvUpload, csvLeagueId, setCsvLeagueId, can
   );
 }
 
+// ── UUID-free Ops Console pickers ───────────────────────────────────────────
+//
+// Every one of these submits the value the field is FOR (a league slug, a
+// real team/player/event/schedule UUID selected from a list) — never a value
+// the operator has to already know and type. League fields submit the
+// LEAGUE_REGISTRY slug ('wbl'/'sbbl'/'tgifbl'), matching the pattern already
+// proven by the POTG form; the worker resolves it server-side via
+// resolveLeagueId (CLAUDE.md rule 10). Season/Team dropdowns need the
+// league's real UUID purely to CLIENT-SIDE filter their own options — see
+// leagueUuidForSlug — that UUID is never something the operator sees or types.
+const SELECT_CLASS = "w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm";
+
+function leagueUuidForSlug(leagues: LeagueRef[], slug: string): string | null {
+  const entry = LEAGUE_REGISTRY.find((l) => l.id === slug);
+  if (!entry) return null;
+  return leagues.find((l) => l.code?.toUpperCase() === entry.code.toUpperCase())?.id ?? null;
+}
+
+function LeagueSelect({ value, onChange, allowNone }: {
+  value: string;
+  onChange: (slug: string) => void;
+  /** Include a blank "No League" option for optional-league fields (Events). */
+  allowNone?: boolean;
+}) {
+  return (
+    <select className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
+      {allowNone && <option value="">No League</option>}
+      {LEAGUE_REGISTRY.map((l) => (
+        <option key={l.id} value={l.id}>{l.name}</option>
+      ))}
+    </select>
+  );
+}
+
+function SeasonSelect({ seasons, leagues, leagueSlug, value, onChange }: {
+  seasons: SeasonRef[];
+  leagues: LeagueRef[];
+  leagueSlug: string;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const leagueUuid = leagueUuidForSlug(leagues, leagueSlug);
+  // seasons ref data is ordered most-recently-created first — there's no
+  // "current season" flag in the schema, so "most recent" is the best
+  // available default (see docs/ops/... investigation, no is_active column).
+  const filtered = leagueUuid ? seasons.filter((s) => s.league_id === leagueUuid) : [];
+  return (
+    <select className={SELECT_CLASS} value={value} disabled={!leagueUuid} onChange={(e) => onChange(e.target.value)}>
+      <option value="">
+        {!leagueUuid ? 'Select a league first' : filtered.length === 0 ? 'No seasons found for this league' : 'Select Season *'}
+      </option>
+      {filtered.map((s) => (
+        <option key={s.id} value={s.id}>{s.name}</option>
+      ))}
+    </select>
+  );
+}
+
+function DivisionSelect({ divisions, seasonId, value, onChange }: {
+  divisions: DivisionRef[];
+  seasonId: string;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const filtered = seasonId ? divisions.filter((d) => d.season_id === seasonId) : [];
+  return (
+    <select className={SELECT_CLASS} value={value} disabled={!seasonId} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{!seasonId ? 'Select a season first' : 'No Division'}</option>
+      {filtered.map((d) => (
+        <option key={d.id} value={d.id}>{d.name}</option>
+      ))}
+    </select>
+  );
+}
+
+function TeamSelect({ teams, leagues, leagueSlug, value, onChange, placeholder }: {
+  teams: TeamRef[];
+  leagues: LeagueRef[];
+  /** Omit to list every team across all leagues (used by Delete Team). */
+  leagueSlug?: string;
+  value: string;
+  onChange: (id: string) => void;
+  placeholder: string;
+}) {
+  const leagueUuid = leagueSlug ? leagueUuidForSlug(leagues, leagueSlug) : null;
+  const filtered = leagueSlug
+    ? (leagueUuid ? teams.filter((t) => t.league_id === leagueUuid) : [])
+    : teams;
+  const active = filtered.filter((t) => t.status !== 'archived');
+  return (
+    <select className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {active.map((t) => (
+        <option key={t.id} value={t.id}>{t.name}</option>
+      ))}
+    </select>
+  );
+}
+
+function playerLabel(p: PlayerRef): string {
+  const name = p.display_name || `Unnamed (${p.user_id.slice(0, 8)}…)`;
+  const team = p.team_name ? ` — ${p.team_name}` : '';
+  const suspended = p.is_suspended ? ' [SUSPENDED]' : '';
+  return `${name}${team}${suspended}`;
+}
+
+function PlayerSelect({ players, value, onChange, placeholder }: {
+  players: PlayerRef[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <select className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {players.map((p) => (
+        <option key={p.id} value={p.id}>{playerLabel(p)}</option>
+      ))}
+    </select>
+  );
+}
+
+function EventSelect({ events, value, onChange, placeholder }: {
+  events: EventRef[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <select className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {events.map((ev) => (
+        <option key={ev.id} value={ev.id}>
+          {ev.title}{ev.starts_at ? ` — ${new Date(ev.starts_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function ScheduleSelect({ schedules, value, onChange, placeholder }: {
+  schedules: ScheduleRef[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <select className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {schedules.map((s) => (
+        <option key={s.id} value={s.id}>
+          {(s.league_code || s.league_name || 'League')} — {new Date(s.starts_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}{s.status ? ` [${s.status}]` : ''}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 const OpsPage = () => {
   const queryClient = useQueryClient();
   const { loading, session, user, roles } = useAuth();
@@ -238,7 +398,7 @@ const OpsPage = () => {
   const rosterFileRef = useRef<HTMLInputElement>(null);
   const [rosterParseState, setRosterParseState] = useState<'idle' | 'parsing' | 'parsed' | 'error'>('idle');
   const [rosterParseError, setRosterParseError] = useState<string | null>(null);
-  const [rosterForm, setRosterForm] = useState({ teamName: '', leagueId: '', seasonId: '' });
+  const [rosterForm, setRosterForm] = useState({ teamName: '', leagueId: 'wbl', seasonId: '' });
   const [rosterPlayers, setRosterPlayers] = useState<Array<{ name: string; jerseyNumber: string; position: string }>>([]);
   const [rosterImportResult, setRosterImportResult] = useState<{ teamId: string; inserted: number; skipped: number; failed: number; warnings: string[]; errors: string[] } | null>(null);
   // Ops Console is a league_admin surface, not a super_admin one. Regular admins
@@ -262,15 +422,15 @@ const OpsPage = () => {
   };
 
   // ── Admin CRUD form state ──────────────────────────────────────────────────
-  const [teamForm, setTeamForm] = useState({ name: '', leagueId: '', seasonId: '', divisionId: '' });
+  const [teamForm, setTeamForm] = useState({ name: '', leagueId: 'wbl', seasonId: '', divisionId: '' });
   const [deleteTeamId, setDeleteTeamId] = useState('');
 
-  const [playerForm, setPlayerForm] = useState({ userId: '', teamId: '', leagueId: '', jerseyNumber: '', position: '' });
+  const [playerForm, setPlayerForm] = useState({ name: '', teamId: '', leagueId: 'wbl', jerseyNumber: '', position: '' });
   const [deletePlayerId, setDeletePlayerId] = useState('');
   const [suspendPlayerId, setSuspendPlayerId] = useState('');
   const [suspendPlayerReason, setSuspendPlayerReason] = useState('');
 
-  const [scheduleForm, setScheduleForm] = useState({ leagueId: '', seasonId: '', startsAt: '', endsAt: '' });
+  const [scheduleForm, setScheduleForm] = useState({ leagueId: 'wbl', seasonId: '', startsAt: '', endsAt: '' });
   const [deleteScheduleId, setDeleteScheduleId] = useState('');
 
   const [eventForm, setEventForm] = useState({ title: '', location: '', date: '', leagueId: '' });
@@ -411,6 +571,46 @@ const OpsPage = () => {
     enabled: canRunOps,
     retry: shouldRetryOpsQuery,
   });
+  // Backs the Team/Player/Event/Schedule pickers so no Manual Ops form ever
+  // requires the operator to paste a raw UUID.
+  const teamsListQuery = useQuery({
+    queryKey: ['ops-list-teams'],
+    queryFn: () => fetchOpsList('teams'),
+    enabled: canRunOps,
+    retry: shouldRetryOpsQuery,
+  });
+  const playersListQuery = useQuery({
+    queryKey: ['ops-list-players'],
+    queryFn: () => fetchOpsList('players'),
+    enabled: canRunOps,
+    retry: shouldRetryOpsQuery,
+  });
+  const eventsListQuery = useQuery({
+    queryKey: ['ops-list-events'],
+    queryFn: () => fetchOpsList('events'),
+    enabled: canRunOps,
+    retry: shouldRetryOpsQuery,
+  });
+  const schedulesListQuery = useQuery({
+    queryKey: ['ops-list-schedules'],
+    queryFn: () => fetchOpsList('schedules'),
+    enabled: canRunOps,
+    retry: shouldRetryOpsQuery,
+  });
+  const teamsList = (teamsListQuery.data?.data ?? []) as TeamRef[];
+  const playersList = (playersListQuery.data?.data ?? []) as PlayerRef[];
+  const eventsList = (eventsListQuery.data?.data ?? []) as EventRef[];
+  const schedulesList = (schedulesListQuery.data?.data ?? []) as ScheduleRef[];
+  const leaguesRef = bootstrapQuery.data?.references.leagues ?? [];
+  const seasonsRef = bootstrapQuery.data?.references.seasons ?? [];
+  const divisionsRef = bootstrapQuery.data?.references.divisions ?? [];
+  const invalidateOpsLists = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] }),
+    queryClient.invalidateQueries({ queryKey: ['ops-list-teams'] }),
+    queryClient.invalidateQueries({ queryKey: ['ops-list-players'] }),
+    queryClient.invalidateQueries({ queryKey: ['ops-list-events'] }),
+    queryClient.invalidateQueries({ queryKey: ['ops-list-schedules'] }),
+  ]);
   const pipelineHealthQuery = useQuery({
     queryKey: ['ops-pipeline-health'],
     queryFn: fetchPipelineHealth,
@@ -426,7 +626,7 @@ const OpsPage = () => {
     mutationFn: () => mergePlayerIdentities(mergeSourceId.trim(), mergeTargetId.trim()),
     onSuccess: async () => {
       setMergeSourceId(''); setMergeTargetId('');
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      await invalidateOpsLists();
     },
   });
 
@@ -560,8 +760,8 @@ const OpsPage = () => {
       divisionId: teamForm.divisionId || undefined,
     }),
     onSuccess: async () => {
-      setTeamForm({ name: '', leagueId: '', seasonId: '', divisionId: '' });
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      setTeamForm({ name: '', leagueId: 'wbl', seasonId: '', divisionId: '' });
+      await invalidateOpsLists();
     },
   });
 
@@ -569,21 +769,24 @@ const OpsPage = () => {
     mutationFn: () => manualOpsAction('team', 'delete', { id: deleteTeamId }),
     onSuccess: async () => {
       setDeleteTeamId('');
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      await invalidateOpsLists();
     },
   });
 
+  // Replaces the raw-UUID contract: submits a NAME, not a pre-existing user_id.
+  // Server-side find-or-create via /ops/players/find-or-create (reuses the same
+  // logic already proven by Roster Import), so there's nothing to look up first.
   const createPlayerMutation = useMutation({
-    mutationFn: () => manualOpsAction('player', 'create', {
-      userId: playerForm.userId,
+    mutationFn: () => findOrCreatePlayer({
+      name: playerForm.name,
+      leagueId: playerForm.leagueId,
       teamId: playerForm.teamId || undefined,
-      leagueId: playerForm.leagueId || undefined,
-      jerseyNumber: playerForm.jerseyNumber ? Number(playerForm.jerseyNumber) : undefined,
+      jerseyNumber: playerForm.jerseyNumber || undefined,
       position: playerForm.position || undefined,
     }),
     onSuccess: async () => {
-      setPlayerForm({ userId: '', teamId: '', leagueId: '', jerseyNumber: '', position: '' });
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      setPlayerForm({ name: '', teamId: '', leagueId: 'wbl', jerseyNumber: '', position: '' });
+      await invalidateOpsLists();
     },
   });
 
@@ -592,7 +795,7 @@ const OpsPage = () => {
     onSuccess: async () => {
       setSuspendPlayerId('');
       setSuspendPlayerReason('');
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      await invalidateOpsLists();
     },
   });
 
@@ -600,7 +803,7 @@ const OpsPage = () => {
     mutationFn: () => manualOpsAction('player', 'delete', { id: deletePlayerId }),
     onSuccess: async () => {
       setDeletePlayerId('');
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      await invalidateOpsLists();
     },
   });
 
@@ -612,8 +815,8 @@ const OpsPage = () => {
       endsAt: scheduleForm.endsAt || undefined,
     }),
     onSuccess: async () => {
-      setScheduleForm({ leagueId: '', seasonId: '', startsAt: '', endsAt: '' });
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      setScheduleForm({ leagueId: 'wbl', seasonId: '', startsAt: '', endsAt: '' });
+      await invalidateOpsLists();
     },
   });
 
@@ -621,7 +824,7 @@ const OpsPage = () => {
     mutationFn: () => manualOpsAction('schedule', 'delete', { id: deleteScheduleId }),
     onSuccess: async () => {
       setDeleteScheduleId('');
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      await invalidateOpsLists();
     },
   });
 
@@ -634,7 +837,7 @@ const OpsPage = () => {
     }),
     onSuccess: async () => {
       setEventForm({ title: '', location: '', date: '', leagueId: '' });
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      await invalidateOpsLists();
     },
   });
 
@@ -642,7 +845,7 @@ const OpsPage = () => {
     mutationFn: () => manualOpsAction('event', 'delete', { id: deleteEventId }),
     onSuccess: async () => {
       setDeleteEventId('');
-      await queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] });
+      await invalidateOpsLists();
     },
   });
 
@@ -1125,9 +1328,23 @@ const OpsPage = () => {
                 <h3 className="text-sm font-semibold mb-2">Create Team</h3>
                 <div className="space-y-2">
                   <input placeholder="Team Name *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={teamForm.name} onChange={e => setTeamForm(f => ({ ...f, name: e.target.value }))} />
-                  <input placeholder="League ID (UUID) *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={teamForm.leagueId} onChange={e => setTeamForm(f => ({ ...f, leagueId: e.target.value }))} />
-                  <input placeholder="Season ID (UUID) *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={teamForm.seasonId} onChange={e => setTeamForm(f => ({ ...f, seasonId: e.target.value }))} />
-                  <input placeholder="Division ID (optional)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={teamForm.divisionId} onChange={e => setTeamForm(f => ({ ...f, divisionId: e.target.value }))} />
+                  <LeagueSelect
+                    value={teamForm.leagueId}
+                    onChange={(slug) => setTeamForm(f => ({ ...f, leagueId: slug, seasonId: '', divisionId: '' }))}
+                  />
+                  <SeasonSelect
+                    seasons={seasonsRef}
+                    leagues={leaguesRef}
+                    leagueSlug={teamForm.leagueId}
+                    value={teamForm.seasonId}
+                    onChange={(id) => setTeamForm(f => ({ ...f, seasonId: id, divisionId: '' }))}
+                  />
+                  <DivisionSelect
+                    divisions={divisionsRef}
+                    seasonId={teamForm.seasonId}
+                    value={teamForm.divisionId}
+                    onChange={(id) => setTeamForm(f => ({ ...f, divisionId: id }))}
+                  />
                   <button disabled={!teamForm.name || !teamForm.leagueId || !teamForm.seasonId || createTeamMutation.isPending} className="gold-bg px-4 py-2 rounded-sm text-xs w-full disabled:opacity-60" onClick={() => createTeamMutation.mutate()}>{createTeamMutation.isPending ? 'Creating…' : 'Create Team'}</button>
                   {createTeamMutation.error && <p className="text-xs text-destructive">{(createTeamMutation.error as Error).message}</p>}
                   {createTeamMutation.isSuccess && <p className="text-xs text-success">Team created.</p>}
@@ -1136,7 +1353,13 @@ const OpsPage = () => {
               <div className="border border-destructive/20 p-3 rounded-sm bg-destructive/5">
                 <h3 className="text-sm font-semibold text-destructive mb-2">Delete Team</h3>
                 <div className="flex gap-2">
-                  <input placeholder="Team ID to Delete" className="flex-1 bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={deleteTeamId} onChange={e => setDeleteTeamId(e.target.value)} />
+                  <TeamSelect
+                    teams={teamsList}
+                    leagues={leaguesRef}
+                    value={deleteTeamId}
+                    onChange={setDeleteTeamId}
+                    placeholder="Select team to delete"
+                  />
                   <button disabled={!deleteTeamId || deleteTeamMutation.isPending} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-sm text-xs disabled:opacity-60" onClick={() => deleteTeamMutation.mutate()}>{deleteTeamMutation.isPending ? '…' : 'Delete'}</button>
                 </div>
                 {deleteTeamMutation.error && <p className="text-xs text-destructive mt-1">{(deleteTeamMutation.error as Error).message}</p>}
@@ -1163,15 +1386,26 @@ const OpsPage = () => {
             <div className="space-y-4">
               <div className="border border-border p-3 rounded-sm">
                 <h3 className="text-sm font-semibold mb-2">Create Player</h3>
+                <p className="text-xs text-muted-foreground mb-2">Finds an existing player by name, or registers a new one — same lookup Roster Import uses. No account ID needed.</p>
                 <div className="space-y-2">
-                  <input placeholder="User ID (UUID) *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={playerForm.userId} onChange={e => setPlayerForm(f => ({ ...f, userId: e.target.value }))} />
-                  <input placeholder="Team ID (optional)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={playerForm.teamId} onChange={e => setPlayerForm(f => ({ ...f, teamId: e.target.value }))} />
-                  <input placeholder="League ID (optional)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={playerForm.leagueId} onChange={e => setPlayerForm(f => ({ ...f, leagueId: e.target.value }))} />
+                  <input placeholder="Player Name *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={playerForm.name} onChange={e => setPlayerForm(f => ({ ...f, name: e.target.value }))} />
+                  <LeagueSelect
+                    value={playerForm.leagueId}
+                    onChange={(slug) => setPlayerForm(f => ({ ...f, leagueId: slug, teamId: '' }))}
+                  />
+                  <TeamSelect
+                    teams={teamsList}
+                    leagues={leaguesRef}
+                    leagueSlug={playerForm.leagueId}
+                    value={playerForm.teamId}
+                    onChange={(id) => setPlayerForm(f => ({ ...f, teamId: id }))}
+                    placeholder="Team (optional)"
+                  />
                   <div className="grid grid-cols-2 gap-2">
                     <input placeholder="Jersey #" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={playerForm.jerseyNumber} onChange={e => setPlayerForm(f => ({ ...f, jerseyNumber: e.target.value }))} />
                     <input placeholder="Position" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={playerForm.position} onChange={e => setPlayerForm(f => ({ ...f, position: e.target.value }))} />
                   </div>
-                  <button disabled={!playerForm.userId || createPlayerMutation.isPending} className="gold-bg px-4 py-2 rounded-sm text-xs w-full disabled:opacity-60" onClick={() => createPlayerMutation.mutate()}>{createPlayerMutation.isPending ? 'Creating…' : 'Create Player'}</button>
+                  <button disabled={!playerForm.name || !playerForm.leagueId || createPlayerMutation.isPending} className="gold-bg px-4 py-2 rounded-sm text-xs w-full disabled:opacity-60" onClick={() => createPlayerMutation.mutate()}>{createPlayerMutation.isPending ? 'Creating…' : 'Create Player'}</button>
                   {createPlayerMutation.error && <p className="text-xs text-destructive">{(createPlayerMutation.error as Error).message}</p>}
                   {createPlayerMutation.isSuccess && <p className="text-xs text-success">Player created.</p>}
                 </div>
@@ -1180,7 +1414,7 @@ const OpsPage = () => {
                 <h3 className="text-sm font-semibold text-warning mb-2">Suspend Player</h3>
                 <div className="space-y-2">
                   <div className="flex gap-2">
-                    <input placeholder="Player ID to Suspend" className="flex-1 bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={suspendPlayerId} onChange={e => setSuspendPlayerId(e.target.value)} />
+                    <PlayerSelect players={playersList} value={suspendPlayerId} onChange={setSuspendPlayerId} placeholder="Select player to suspend" />
                     <button disabled={!suspendPlayerId || suspendPlayerMutation.isPending} className="bg-warning hover:bg-warning/90 text-warning-foreground px-4 py-2 rounded-sm text-xs text-black disabled:opacity-60" onClick={() => suspendPlayerMutation.mutate()}>{suspendPlayerMutation.isPending ? '…' : 'Suspend'}</button>
                   </div>
                   <input placeholder="Reason (optional)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={suspendPlayerReason} onChange={e => setSuspendPlayerReason(e.target.value)} />
@@ -1192,8 +1426,8 @@ const OpsPage = () => {
                 <h3 className="text-sm font-semibold text-primary mb-2">Merge Player Identities</h3>
                 <p className="text-xs text-muted-foreground mb-2">Point a duplicate (e.g. auto-registered from a POTG upload) at the real player. Stats move to the target; nothing is deleted.</p>
                 <div className="space-y-2">
-                  <input placeholder="Duplicate Player ID (source)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={mergeSourceId} onChange={e => setMergeSourceId(e.target.value)} />
-                  <input placeholder="Canonical Player ID (target)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={mergeTargetId} onChange={e => setMergeTargetId(e.target.value)} />
+                  <PlayerSelect players={playersList} value={mergeSourceId} onChange={setMergeSourceId} placeholder="Duplicate player (source)" />
+                  <PlayerSelect players={playersList} value={mergeTargetId} onChange={setMergeTargetId} placeholder="Canonical player (target)" />
                   <button disabled={!mergeSourceId.trim() || !mergeTargetId.trim() || mergeMutation.isPending} className="gold-bg px-4 py-2 rounded-sm text-xs w-full disabled:opacity-60" onClick={() => mergeMutation.mutate()}>{mergeMutation.isPending ? 'Merging…' : 'Merge Identities'}</button>
                   {mergeMutation.error && <p className="text-xs text-destructive">{(mergeMutation.error as Error).message}</p>}
                   {mergeMutation.isSuccess && <p className="text-xs text-success">{mergeMutation.data?.message}</p>}
@@ -1202,7 +1436,7 @@ const OpsPage = () => {
               <div className="border border-destructive/20 p-3 rounded-sm bg-destructive/5">
                 <h3 className="text-sm font-semibold text-destructive mb-2">Delete Player</h3>
                 <div className="flex gap-2">
-                  <input placeholder="Player ID to Delete" className="flex-1 bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={deletePlayerId} onChange={e => setDeletePlayerId(e.target.value)} />
+                  <PlayerSelect players={playersList} value={deletePlayerId} onChange={setDeletePlayerId} placeholder="Select player to delete" />
                   <button disabled={!deletePlayerId || deletePlayerMutation.isPending} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-sm text-xs disabled:opacity-60" onClick={() => deletePlayerMutation.mutate()}>{deletePlayerMutation.isPending ? '…' : 'Delete'}</button>
                 </div>
                 {deletePlayerMutation.error && <p className="text-xs text-destructive mt-1">{(deletePlayerMutation.error as Error).message}</p>}
@@ -1231,8 +1465,17 @@ const OpsPage = () => {
               <div className="border border-border p-3 rounded-sm">
                 <h3 className="text-sm font-semibold mb-2">Create Schedule Slot</h3>
                 <div className="space-y-2">
-                  <input placeholder="League ID (UUID) *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={scheduleForm.leagueId} onChange={e => setScheduleForm(f => ({ ...f, leagueId: e.target.value }))} />
-                  <input placeholder="Season ID (UUID) *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={scheduleForm.seasonId} onChange={e => setScheduleForm(f => ({ ...f, seasonId: e.target.value }))} />
+                  <LeagueSelect
+                    value={scheduleForm.leagueId}
+                    onChange={(slug) => setScheduleForm(f => ({ ...f, leagueId: slug, seasonId: '' }))}
+                  />
+                  <SeasonSelect
+                    seasons={seasonsRef}
+                    leagues={leaguesRef}
+                    leagueSlug={scheduleForm.leagueId}
+                    value={scheduleForm.seasonId}
+                    onChange={(id) => setScheduleForm(f => ({ ...f, seasonId: id }))}
+                  />
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Starts At *</label>
@@ -1251,7 +1494,7 @@ const OpsPage = () => {
               <div className="border border-destructive/20 p-3 rounded-sm bg-destructive/5">
                 <h3 className="text-sm font-semibold text-destructive mb-2">Delete Schedule Entry</h3>
                 <div className="flex gap-2">
-                  <input placeholder="Schedule Slot ID to Delete" className="flex-1 bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={deleteScheduleId} onChange={e => setDeleteScheduleId(e.target.value)} />
+                  <ScheduleSelect schedules={schedulesList} value={deleteScheduleId} onChange={setDeleteScheduleId} placeholder="Select schedule entry to delete" />
                   <button disabled={!deleteScheduleId || deleteScheduleMutation.isPending} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-sm text-xs disabled:opacity-60" onClick={() => deleteScheduleMutation.mutate()}>{deleteScheduleMutation.isPending ? '…' : 'Delete'}</button>
                 </div>
                 {deleteScheduleMutation.error && <p className="text-xs text-destructive mt-1">{(deleteScheduleMutation.error as Error).message}</p>}
@@ -1281,7 +1524,7 @@ const OpsPage = () => {
                 <div className="space-y-2">
                   <input placeholder="Event Title *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))} />
                   <input placeholder="Location (optional)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))} />
-                  <input placeholder="League ID (optional)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={eventForm.leagueId} onChange={e => setEventForm(f => ({ ...f, leagueId: e.target.value }))} />
+                  <LeagueSelect allowNone value={eventForm.leagueId} onChange={(slug) => setEventForm(f => ({ ...f, leagueId: slug }))} />
                   <input type="date" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={eventForm.date} onChange={e => setEventForm(f => ({ ...f, date: e.target.value }))} />
                   <button disabled={!eventForm.title || createEventMutation.isPending} className="gold-bg px-4 py-2 rounded-sm text-xs w-full disabled:opacity-60" onClick={() => createEventMutation.mutate()}>{createEventMutation.isPending ? 'Creating…' : 'Create Event'}</button>
                   {createEventMutation.error && <p className="text-xs text-destructive">{(createEventMutation.error as Error).message}</p>}
@@ -1330,7 +1573,7 @@ const OpsPage = () => {
                 <div className="space-y-2 bg-secondary/30 p-3 rounded-sm border border-border">
                   <input placeholder="Event Title *" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={eventGraphicForm.title} onChange={(e) => setEventGraphicForm(f => ({ ...f, title: e.target.value }))} />
                   <input placeholder="Location" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={eventGraphicForm.location} onChange={(e) => setEventGraphicForm(f => ({ ...f, location: e.target.value }))} />
-                  <input placeholder="League ID (e.g. wbl, sbbl)" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={eventGraphicForm.leagueId} onChange={(e) => setEventGraphicForm(f => ({ ...f, leagueId: e.target.value }))} />
+                  <LeagueSelect allowNone value={eventGraphicForm.leagueId} onChange={(slug) => setEventGraphicForm(f => ({ ...f, leagueId: slug }))} />
                   <input placeholder="Date / Time" className="w-full bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={eventGraphicForm.date} onChange={(e) => setEventGraphicForm(f => ({ ...f, date: e.target.value }))} />
                   <button
                     disabled={!eventGraphicForm.title || createEventMutation.isPending || eventMediaMutation.isPending}
@@ -1361,7 +1604,7 @@ const OpsPage = () => {
               <div className="border border-destructive/20 p-3 rounded-sm bg-destructive/5">
                 <h3 className="text-sm font-semibold text-destructive mb-2">Delete Event</h3>
                 <div className="flex gap-2">
-                  <input placeholder="Event ID to Delete" className="flex-1 bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={deleteEventId} onChange={e => setDeleteEventId(e.target.value)} />
+                  <EventSelect events={eventsList} value={deleteEventId} onChange={setDeleteEventId} placeholder="Select event to delete" />
                   <button disabled={!deleteEventId || deleteEventMutation.isPending} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-sm text-xs disabled:opacity-60" onClick={() => deleteEventMutation.mutate()}>{deleteEventMutation.isPending ? '…' : 'Delete'}</button>
                 </div>
                 {deleteEventMutation.error && <p className="text-xs text-destructive mt-1">{(deleteEventMutation.error as Error).message}</p>}
@@ -1709,12 +1952,18 @@ const OpsPage = () => {
                   <input className="w-full mt-1 bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={rosterForm.teamName} onChange={e => setRosterForm(f => ({ ...f, teamName: e.target.value }))} placeholder="e.g. Ball is Life" />
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">League ID / Code *</label>
-                  <input className="w-full mt-1 bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={rosterForm.leagueId} onChange={e => setRosterForm(f => ({ ...f, leagueId: e.target.value }))} placeholder="e.g. wbl" />
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">League *</label>
+                  <LeagueSelect value={rosterForm.leagueId} onChange={(slug) => setRosterForm(f => ({ ...f, leagueId: slug, seasonId: '' }))} />
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Season ID (UUID) *</label>
-                  <input className="w-full mt-1 bg-secondary border border-border rounded-sm px-3 py-2 text-sm" value={rosterForm.seasonId} onChange={e => setRosterForm(f => ({ ...f, seasonId: e.target.value }))} placeholder="season uuid" />
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Season *</label>
+                  <SeasonSelect
+                    seasons={seasonsRef}
+                    leagues={leaguesRef}
+                    leagueSlug={rosterForm.leagueId}
+                    value={rosterForm.seasonId}
+                    onChange={(id) => setRosterForm(f => ({ ...f, seasonId: id }))}
+                  />
                 </div>
               </div>
 

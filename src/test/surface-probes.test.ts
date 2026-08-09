@@ -53,10 +53,10 @@ describe('Surface Probes', () => {
       expect(body.ok).toBe(true);
 
       // resolvePayload maps CSV row → DB payload. Inspect what actually landed in state.teams.
-      // resolvePayload returns an array; createAdmin.upsert() spreads it as {"0": {...team}, "id": uuid}
-      // The team payload is at state.teams[0][0] — the mock's array-spread boundary.
-      const upsertedEntry = state.teams[0] as Record<string, unknown>;
-      const teamPayload = upsertedEntry[0] as Record<string, unknown>;
+      // createAdmin's upsert() now properly handles an array payload (each row
+      // becomes its own top-level state entry), matching real Supabase
+      // semantics — so the resolved team payload is state.teams[0] directly.
+      const teamPayload = state.teams[0] as Record<string, unknown>;
 
       expect(teamPayload).toBeDefined();
       // Zod schema strips unknown keys — some_loose_key must NOT appear in resolved payload
@@ -64,7 +64,8 @@ describe('Surface Probes', () => {
       // resolvePayload maps name → name, status is hardcoded "published"
       expect(teamPayload).toHaveProperty('name', 'Test Team');
       expect(teamPayload).toHaveProperty('status', 'published');
-      // league_id passes through (no leagueMap hit → raw value)
+      // No leagues seeded in this test's state, so resolveLeagueId finds no
+      // match for "SBBL" and resolvePayload's fallback writes the raw value.
       expect(teamPayload).toHaveProperty('league_id', 'SBBL');
     });
 

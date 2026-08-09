@@ -2575,11 +2575,30 @@ async function handleOpsListTeams({ req, admin }: HandlerCtx) {
   if (error) throw new Error(error.message);
   return json({ ok: true, data });
 }
+// Joins profiles.display_name (via the single players.profile_id FK) and
+// teams.name (via the single players.team_id FK) so the Ops Console can
+// render a human-readable player picker instead of a raw Player ID text box.
+// Both FKs are unambiguous (players has exactly one FK to each target table),
+// so PostgREST embedding is safe here — unlike the player_game_stats join
+// history, there is no second candidate FK path to accidentally match.
 async function handleOpsListPlayers({ req, admin }: HandlerCtx) {
   await requireOpsAdminSession(req, admin);
-  const { data, error } = await admin.from('players').select('*').order('created_at', { ascending: false });
+  const { data, error } = await admin
+    .from('players')
+    .select('*, profiles(display_name,full_name), teams(name)')
+    .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return json({ ok: true, data });
+  const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+    const profile = row.profiles as { display_name?: string | null; full_name?: string | null } | null;
+    const team = row.teams as { name?: string | null } | null;
+    const { profiles: _profiles, teams: _teams, ...rest } = row;
+    return {
+      ...rest,
+      display_name: profile?.display_name || profile?.full_name || null,
+      team_name: team?.name ?? null,
+    };
+  });
+  return json({ ok: true, data: rows });
 }
 async function handleOpsListProducts({ req, admin }: HandlerCtx) {
   await requireOpsAdminSession(req, admin);
@@ -2592,6 +2611,24 @@ async function handleOpsListEvents({ req, admin }: HandlerCtx) {
   const { data, error } = await admin.from('league_events').select('*').order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return json({ ok: true, data });
+}
+// Joins leagues.code (via schedule_slots.league_id, single unambiguous FK) so
+// the Ops Console can render a human-readable schedule-slot picker for
+// "Delete Schedule Entry" instead of a raw Schedule Slot ID text box. No
+// list endpoint for schedule_slots existed before this.
+async function handleOpsListSchedules({ req, admin }: HandlerCtx) {
+  await requireOpsAdminSession(req, admin);
+  const { data, error } = await admin
+    .from('schedule_slots')
+    .select('*, leagues(code,name)')
+    .order('starts_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+    const league = row.leagues as { code?: string | null; name?: string | null } | null;
+    const { leagues: _leagues, ...rest } = row;
+    return { ...rest, league_code: league?.code ?? null, league_name: league?.name ?? null };
+  });
+  return json({ ok: true, data: rows });
 }
 
 // Ops Edit (Patch) handlers
@@ -3880,6 +3917,90 @@ export async function resolvePotgPlayer(
   }
 
   return { ok: true, playerId, userId, provisioned, warnings };
+}
+
+/**
+ * POST /ops/players/find-or-create
+ *
+ * Replaces the old "Create Player" contract, which required the operator to
+ * already know and paste a raw `user_id` UUID with no lookup endpoint to find
+ * one — the only field in the Ops Console with genuinely nothing to search
+ * against. Regular admins do not have database access, so that field was
+ * effectively unusable.
+ *
+ * Reuses `resolvePotgPlayer` — the same find-or-create-by-display-name logic
+ * already proven in production by Roster Import and POTG ingest — instead of
+ * requiring a pre-existing account. Body: { name, leagueId, teamId?,
+ * jerseyNumber?, position? }. `leagueId` accepts a code or a UUID (resolved
+ * via resolveLeagueId); `teamId`, if given, is a real UUID selected from a
+ * dropdown by the caller, not a name — set directly rather than re-resolved
+ * by name, since resolvePotgPlayer only assigns a team on first provisioning
+ * and an operator may also be attaching a team to an already-registered
+ * player (e.g. a self-registered fan being rostered for the first time).
+ */
+async function handleOpsFindOrCreatePlayer(ctx: HandlerCtx) {
+  await ensureMutation(ctx.req, ctx);
+  const session = await requireOpsAdminSession(ctx.req, ctx.admin);
+
+  const body = (await ctx.req.json().catch(() => null)) as {
+    name?: string;
+    leagueId?: string;
+    teamId?: string;
+    jerseyNumber?: string | number;
+    position?: string;
+  } | null;
+
+  const name = body?.name?.trim();
+  if (!name) return json({ ok: false, error: "name_required" }, 400);
+
+  const rawLeague = body?.leagueId?.trim();
+  if (!rawLeague) return json({ ok: false, error: "league_id_required" }, 400);
+  const leagueUuid = await resolveLeagueId(ctx.admin, rawLeague);
+  if (!leagueUuid) return json({ ok: false, error: "league_not_found" }, 404);
+
+  const result = await resolvePotgPlayer(ctx.admin, name, leagueUuid, {
+    actorId: session.userId,
+  });
+  if (result.ok === false) {
+    return json({ ok: false, error: result.error, details: result.details }, 422);
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (body?.teamId) patch.team_id = body.teamId;
+  if (body?.jerseyNumber !== undefined && body.jerseyNumber !== "") {
+    const jersey = Number(body.jerseyNumber);
+    if (Number.isFinite(jersey) && jersey >= 0) patch.jersey_number = jersey;
+  }
+  if (body?.position?.trim()) patch.position = body.position.trim();
+
+  let player: Record<string, unknown> | null = null;
+  if (Object.keys(patch).length > 0) {
+    const { data, error } = await ctx.admin
+      .from("players")
+      .update(patch)
+      .eq("id", result.playerId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    player = data as Record<string, unknown>;
+  } else {
+    const { data, error } = await ctx.admin
+      .from("players")
+      .select()
+      .eq("id", result.playerId)
+      .single();
+    if (error) throw new Error(error.message);
+    player = data as Record<string, unknown>;
+  }
+
+  return json({
+    ok: true,
+    playerId: result.playerId,
+    userId: result.userId,
+    provisioned: result.provisioned,
+    warnings: result.warnings,
+    player,
+  });
 }
 
 
@@ -6756,6 +6877,7 @@ const routes: Array<{ method: string; path: string; handler: Handler }> = [
   { method: "GET", path: "/ops/imports/history", handler: handleImportHistory },
   { method: "GET", path: "/ops/pipeline/health", handler: handlePipelineHealth },
   { method: "POST", path: "/ops/players/merge", handler: handlePlayerIdentityMerge },
+  { method: "POST", path: "/ops/players/find-or-create", handler: handleOpsFindOrCreatePlayer },
 
   { method: "POST", path: "/ops/event/parse", handler: handleParseEventImage },
   { method: "POST", path: "/ops/potg/parse", handler: handleParsePotgImage },
@@ -7939,6 +8061,7 @@ routes.push(
   { method: "GET",    path: "/ops/list/players",   handler: handleOpsListPlayers },
   { method: "GET",    path: "/ops/list/products",  handler: handleOpsListProducts },
   { method: "GET",    path: "/ops/list/events",    handler: handleOpsListEvents },
+  { method: "GET",    path: "/ops/list/schedules", handler: handleOpsListSchedules },
   { method: "GET",    path: "/ops/list/media",              handler: handleOpsListMediaPublications },
   { method: "PATCH",  path: "/ops/media/publications/:id",  handler: handleOpsPatchMediaPublications },
   { method: "DELETE", path: "/ops/media/publications/:id",  handler: handleOpsDeleteMediaPublications },

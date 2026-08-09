@@ -29,13 +29,13 @@ const teamRowSchema = z.object({
 const playerRowSchema = z.object({
   user_id: z.string().uuid("User ID must be a valid UUID"),
   team_id: z.string().uuid("Team ID must be a valid UUID").optional().nullable(),
-  league_id: z.string().uuid("League ID must be a valid UUID").optional().nullable(),
+  league_id: z.string().min(1, "League ID/Code").optional().nullable(),
   jersey_number: z.string().regex(/^\d+$/, "Jersey number must be a non-negative integer").optional().nullable(),
   position: z.string().optional().nullable(),
 });
 
 const scheduleRowSchema = z.object({
-  league_id: z.string().uuid("League ID must be a valid UUID"),
+  league_id: z.string().min(1, "League ID/Code is required"),
   season_id: z.string().uuid("Season ID must be a valid UUID"),
   starts_at: z.string().refine(val => !isNaN(Date.parse(val)), "Starts at must be a valid ISO date"),
   ends_at: z.string().refine(val => !isNaN(Date.parse(val)), "Ends at must be a valid ISO date").optional().nullable(),
@@ -46,7 +46,7 @@ const scheduleRowSchema = z.object({
 
 const eventRowSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  league_id: z.string().uuid("League ID must be a valid UUID").optional().nullable(),
+  league_id: z.string().min(1, "League ID/Code").optional().nullable(),
   season_id: z.string().uuid("Season ID must be a valid UUID").optional().nullable(),
   venue_id: z.string().uuid("Venue ID must be a valid UUID").optional().nullable(),
   starts_at: z.string().refine(val => !isNaN(Date.parse(val)), "Starts at must be a valid ISO date").optional().nullable(),
@@ -111,10 +111,10 @@ const INGEST_CONFIGS: Record<string, IngestConfig> = {
     schema: playerRowSchema,
     table: "players",
     onConflict: "user_id",
-    resolvePayload: (row) => ({
+    resolvePayload: (row, leagueMap) => ({
       user_id: row.user_id,
       team_id: row.team_id || null,
-      league_id: row.league_id || null,
+      league_id: row.league_id ? (leagueMap.get(row.league_id.toLowerCase()) || row.league_id) : null,
       jersey_number: row.jersey_number ? Number(row.jersey_number) : null,
       position: row.position || null,
     })
@@ -122,8 +122,8 @@ const INGEST_CONFIGS: Record<string, IngestConfig> = {
   schedules: {
     schema: scheduleRowSchema,
     table: "schedule_slots",
-    resolvePayload: (row) => ({
-      league_id: row.league_id,
+    resolvePayload: (row, leagueMap) => ({
+      league_id: leagueMap.get(row.league_id.toLowerCase()) || row.league_id,
       season_id: row.season_id,
       venue_id: row.venue_id || null,
       court_id: row.court_id || null,
@@ -135,8 +135,8 @@ const INGEST_CONFIGS: Record<string, IngestConfig> = {
   events: {
     schema: eventRowSchema,
     table: "league_events",
-    resolvePayload: (row) => ({
-      league_id: row.league_id || null,
+    resolvePayload: (row, leagueMap) => ({
+      league_id: row.league_id ? (leagueMap.get(row.league_id.toLowerCase()) || row.league_id) : null,
       season_id: row.season_id || null,
       venue_id: row.venue_id || null,
       title: row.title,
@@ -166,15 +166,27 @@ const INGEST_CONFIGS: Record<string, IngestConfig> = {
 };
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
+/**
+ * Builds a lowercased-code -> league UUID map for the ops import pipeline.
+ *
+ * Previously did a hand-rolled `.in("code", uniqueCodes)` exact-match lookup.
+ * League codes are stored uppercase in the DB (`WBL`); a typed lowercase code
+ * ("wbl") never matched, so the map came back empty and the raw string fell
+ * straight into a `uuid` column downstream -> Postgres `22P02`. This is the
+ * exact CLAUDE.md rule-10 incident pattern. Fixed by routing every code
+ * through the single canonical `resolveLeagueId` resolver (handles UUID
+ * passthrough, case-insensitive code match, and name match) instead of a
+ * second, drifted lookup.
+ */
 async function fetchLeagueMap(supabase: SupabaseClient, rows: Record<string, string>[]): Promise<Map<string, string>> {
   const leagueMap = new Map<string, string>();
   const uniqueCodes = Array.from(new Set(rows.map((r) => r.league_id).filter(Boolean) as string[]));
-  if (uniqueCodes.length > 0) {
-    const { data: leagues } = await supabase.from("leagues").select("id, code").in("code", uniqueCodes);
-    leagues?.forEach((l) => {
-      if (l.code) leagueMap.set(l.code.toLowerCase(), l.id);
-    });
-  }
+  await Promise.all(
+    uniqueCodes.map(async (raw) => {
+      const resolved = await resolveLeagueId(supabase, raw);
+      if (resolved) leagueMap.set(raw.toLowerCase(), resolved);
+    }),
+  );
   return leagueMap;
 }
 

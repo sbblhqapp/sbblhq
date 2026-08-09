@@ -183,15 +183,25 @@ describe('Ops Console — UUID-free Manual Ops forms (league_admin)', () => {
     clickTab('Teams');
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Create Team' })).toBeInTheDocument());
 
-    const comboboxes = screen.getAllByRole('combobox') as HTMLSelectElement[];
-    const leagueSelect = comboboxes.find((el) => within(el).queryByText('Weekend Basketball League'))!;
-
-    // Default form state is 'wbl' -> season select should already show WBL Season 3.
-    let seasonSelect = screen.getAllByRole('combobox').find((el) =>
-      within(el as HTMLElement).queryByText('WBL Season 3') || within(el as HTMLElement).queryByText('Select a league first'),
+    // LeagueSelect's options come from the static LEAGUE_REGISTRY, so it
+    // renders immediately. SeasonSelect's filtering depends on
+    // bootstrapQuery's `references.leagues`/`references.seasons`, which
+    // resolve asynchronously (even mocked) — must wait for that data, not
+    // just for the static heading, or this races under CI's scheduling.
+    const leagueSelect = screen.getAllByRole('combobox').find((el) =>
+      within(el as HTMLElement).queryByText('Weekend Basketball League'),
     ) as HTMLSelectElement;
-    expect(within(seasonSelect).getByText('WBL Season 3')).toBeInTheDocument();
-    expect(within(seasonSelect).queryByText('SBBL Season 11')).not.toBeInTheDocument();
+    expect(leagueSelect).toBeTruthy();
+
+    // Default form state is 'wbl' -> season select should end up showing WBL Season 3.
+    let seasonSelect: HTMLSelectElement;
+    await waitFor(() => {
+      seasonSelect = screen.getAllByRole('combobox').find((el) =>
+        within(el as HTMLElement).queryByText('WBL Season 3'),
+      ) as HTMLSelectElement;
+      expect(seasonSelect).toBeTruthy();
+    });
+    expect(within(seasonSelect!).queryByText('SBBL Season 11')).not.toBeInTheDocument();
 
     // Switch league to SBBL -> season options must swap to SBBL's season only.
     fireEvent.change(leagueSelect, { target: { value: 'sbbl' } });
@@ -202,7 +212,7 @@ describe('Ops Console — UUID-free Manual Ops forms (league_admin)', () => {
       ) as HTMLSelectElement;
       expect(seasonSelect).toBeTruthy();
     });
-    expect(within(seasonSelect).queryByText('WBL Season 3')).not.toBeInTheDocument();
+    expect(within(seasonSelect!).queryByText('WBL Season 3')).not.toBeInTheDocument();
   });
 
   it('Teams tab: Delete Team is a select populated with real team names, not a raw ID box', async () => {

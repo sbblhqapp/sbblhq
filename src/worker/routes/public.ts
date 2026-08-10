@@ -5,7 +5,7 @@
  * The main Worker index.ts still references these via the route table.
  */
 import type { HandlerCtx } from "../shared";
-import { json } from "../shared";
+import { json, resolveLeagueIdFilter, LEAGUE_NO_MATCH } from "../shared";
 
 export async function handlePublicConfig({ env }: HandlerCtx) {
   // Capability flag: tells the UI whether Google OAuth is a working sign-in
@@ -31,10 +31,22 @@ export async function handlePublicConfig({ env }: HandlerCtx) {
 
 export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
   const url = new URL(req.url);
-  const leagueId = url.searchParams.get("leagueId");
+  // CLAUDE.md rule 10: the frontend sends a LEAGUE_REGISTRY slug ('sbbl',
+  // 'wbl', 'tgifbl'), never a raw league_id UUID. Passing that slug straight
+  // into .eq('league_id', ...) throws Postgres 22P02 (this exact endpoint,
+  // for all three leagues, was broken in production 2026-08-09 until this
+  // fix — the public Schedules page showed "Unable to load schedules" for
+  // every league). Must resolve through resolveLeagueIdFilter.
+  const leagueFilter = await resolveLeagueIdFilter(
+    admin,
+    url.searchParams.get("leagueId"),
+  );
+  if (leagueFilter === LEAGUE_NO_MATCH) {
+    return json({ ok: true, data: [] });
+  }
   let q = admin.from("schedule_slots").select("*").eq("status", "upcoming");
-  if (leagueId) {
-    q = q.eq("league_id", leagueId);
+  if (leagueFilter) {
+    q = q.eq("league_id", leagueFilter);
   }
   const { data, error } = await q.order("starts_at", { ascending: true });
   if (error) throw new Error(error.message);

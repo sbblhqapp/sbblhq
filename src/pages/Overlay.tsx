@@ -189,20 +189,32 @@ export default function OverlayPage() {
     );
   }
 
-  if (!payload) return <div />;
+  if (!payload || !payload.game) {
+    return (
+      <div
+        style={{
+          color: '#fff',
+          fontFamily: 'Inter, sans-serif',
+          padding: 12,
+        }}
+      >
+        Overlay unavailable: Missing game data.
+      </div>
+    );
+  }
 
   const overlay = payload.overlay;
   const game = payload.game;
   const sponsor = payload.sponsor;
   const homeName =
-    game.home_team?.name ??
-    game.participant1_label ??
-    (game.event_name ? 'Home' : 'Home');
+    game?.home_team?.name ??
+    game?.participant1_label ??
+    (game?.event_name ? 'Home' : 'Home');
   const awayName =
-    game.away_team?.name ??
-    game.participant2_label ??
-    (game.event_name ? 'Away' : 'Away');
-  const leagueCode = game.leagues?.code ?? '';
+    game?.away_team?.name ??
+    game?.participant2_label ??
+    (game?.event_name ? 'Away' : 'Away');
+  const leagueCode = game?.leagues?.code ?? '';
 
   if (isBroadcastOverlayV2Enabled() && card !== 'scorebug') {
     return (

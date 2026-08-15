@@ -2,7 +2,7 @@ import { parseCsv } from '@/lib/parseCsv';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useOpsCsvUpload } from '@/hooks/useOpsCsvUpload';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Shield, Upload, Loader2, CheckCircle2, AlertCircle, Trophy, Image as ImageIcon, Save, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Shield, Upload, Loader2, CheckCircle2, AlertCircle, Trophy, Image as ImageIcon, Save, Trash2, ArrowUp, ArrowDown, Activity } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { PotgCard } from '@/components/ui/PotgCard';
 import { MediaLibraryTab } from '@/components/OpsMediaLibrary';
@@ -17,11 +17,13 @@ import {
 } from '@/lib/api/ops';
 import { LEAGUE_REGISTRY } from '@/lib/leagues';
 import { canAccessOps, type AppRole } from '@/lib/auth/roles';
+import { Link } from 'react-router-dom';
 import { resizeImageToFit, inferTargetDimensions } from '@/lib/imageResize';
 import { fetchScores, submitScoreManual, parseScoreboardImage } from '@/lib/api/scores';
-import type { ScoreCategory } from '@/types';
+import type { ScoreCategory, LeagueId } from '@/types';
+import { LiveScoreboard } from '@/components/LiveScoreboard/LiveScoreboard';
 
-type Tab = 'overview' | 'scores' | 'teams' | 'players' | 'schedules' | 'events' | 'store' | 'potg' | 'roster' | 'media' | 'history';
+type Tab = 'overview' | 'scores' | 'scoreboard' | 'teams' | 'players' | 'schedules' | 'events' | 'store' | 'potg' | 'roster' | 'media' | 'history';
 
 /**
  * Tabs a regular admin (`league_admin`) must NOT see. Store media upload and
@@ -31,17 +33,18 @@ type Tab = 'overview' | 'scores' | 'teams' | 'players' | 'schedules' | 'events' 
 const SUPER_ADMIN_ONLY_TABS: ReadonlySet<Tab> = new Set<Tab>(['store']);
 
 const tabs: Array<{ id: Tab; label: string }> = [
-  { id: 'overview',  label: 'Overview'       },
-  { id: 'scores',    label: 'Scores'         },
-  { id: 'teams',     label: 'Teams'          },
-  { id: 'players',   label: 'Players'        },
-  { id: 'schedules', label: 'Schedules'      },
-  { id: 'events',    label: 'Events'         },
-  { id: 'store',     label: 'Store Media'    },
-  { id: 'potg',      label: 'POTG Parser'    },
-  { id: 'roster',    label: 'Roster Import'  },
-  { id: 'media',     label: 'Media Library'  },
-  { id: 'history',   label: 'Import History' },
+  { id: 'overview',   label: 'Overview'        },
+  { id: 'scores',     label: 'Scores'          },
+  { id: 'scoreboard', label: 'Live Tabulation' },
+  { id: 'teams',      label: 'Teams'           },
+  { id: 'players',    label: 'Players'         },
+  { id: 'schedules',  label: 'Schedules'       },
+  { id: 'events',     label: 'Events'          },
+  { id: 'store',      label: 'Store Media'     },
+  { id: 'potg',       label: 'POTG Parser'     },
+  { id: 'roster',     label: 'Roster Import'   },
+  { id: 'media',      label: 'Media Library'   },
+  { id: 'history',    label: 'Import History'  },
 ];
 
 export const isOpsAuthError = (error: unknown): boolean => {
@@ -422,6 +425,8 @@ const OpsPage = () => {
   };
 
   // ── Admin CRUD form state ──────────────────────────────────────────────────
+  const [scoreboardLeague, setScoreboardLeague] = useState<LeagueId>('wbl');
+  const [scoreboardGameId, setScoreboardGameId] = useState<string>('');
   const [teamForm, setTeamForm] = useState({ name: '', leagueId: 'wbl', seasonId: '', divisionId: '' });
   const [deleteTeamId, setDeleteTeamId] = useState('');
 
@@ -889,6 +894,7 @@ const OpsPage = () => {
     enabled: canRunOps,
     staleTime: 30_000,
   });
+  const scoresList = scoresQuery.data?.games ?? [];
 
   const scoreManualMutation = useMutation({
     mutationFn: () => submitScoreManual({
@@ -1309,6 +1315,92 @@ const OpsPage = () => {
           </div>
         </div>
       </div></section>)}
+
+      {activeTab === 'scoreboard' && (
+        <section id="scoreboard" className="space-y-6 pt-6 font-['Space_Grotesk']">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#222222] pb-3">
+            <div>
+              <h2 className="text-2xl font-bold flex items-center gap-2 text-[#F5F5F0]">
+                <Shield className="w-6 h-6 text-[#C9A84C]" /> Live Tabulation Scoreboard
+              </h2>
+              <p className="text-xs text-[#8A8A8A] mt-0.5">
+                Real-time game monitoring with automatic live projected standings calculation.
+              </p>
+            </div>
+            {scoreboardGameId && (
+              <div className="flex items-center gap-2">
+                <Link
+                  to={`/scorekeeper/${scoreboardGameId}`}
+                  className="rounded-lg bg-[#C9A84C] px-3 py-1.5 text-xs font-bold text-[#0A0A0A] hover:bg-[#E8C76A] transition-colors"
+                >
+                  Courtside Scorekeeper →
+                </Link>
+                <Link
+                  to={`/ops/scoreboard/${scoreboardGameId}`}
+                  className="rounded-lg bg-[#1F1F1F] border border-[#333333] px-3 py-1.5 text-xs font-bold text-[#F5F5F0] hover:bg-[#2A2A2A] transition-colors"
+                >
+                  Fullscreen Monitor →
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-[#222222] bg-[#111111] p-4 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[#8A8A8A] uppercase tracking-wider">League:</span>
+              <div className="flex gap-1">
+                {LEAGUE_REGISTRY.map((l) => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => setScoreboardLeague(l.id)}
+                    className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                      scoreboardLeague === l.id
+                        ? 'bg-[#C9A84C] text-[#0A0A0A]'
+                        : 'bg-[#1A1A1A] text-[#8A8A8A] hover:text-[#F5F5F0]'
+                    }`}
+                  >
+                    {l.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+              <span className="text-xs font-semibold text-[#8A8A8A] uppercase tracking-wider">Game:</span>
+              <select
+                value={scoreboardGameId}
+                onChange={(e) => setScoreboardGameId(e.target.value)}
+                className="flex-1 rounded-md border border-[#262626] bg-[#181818] px-3 py-1.5 text-xs font-medium text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
+              >
+                <option value="">Select a game...</option>
+                {scoresList
+                  .filter((g) => !g.leagueId || g.leagueId === scoreboardLeague)
+                  .map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.awayLabel} vs {g.homeLabel} ({g.status.toUpperCase()})
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+
+          {scoreboardGameId ? (
+            <LiveScoreboard
+              gameId={scoreboardGameId}
+              homeTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.homeLabel ?? 'Home'}
+              awayTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.awayLabel ?? 'Away'}
+              className="shadow-2xl"
+            />
+          ) : (
+            <div className="rounded-xl border border-[#222222] bg-[#111111] p-8 text-center text-[#8A8A8A]">
+              <Activity className="h-10 w-10 mx-auto mb-3 text-[#8A8A8A]" />
+              <h3 className="text-base font-bold text-[#F5F5F0]">No Game Selected</h3>
+              <p className="text-xs mt-1">Select a game from the dropdown above to view live tabulation.</p>
+            </div>
+          )}
+        </section>
+      )}
 
       {activeTab === 'teams' && (<section id="teams" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Teams</h2><div className="space-y-4">
           <OpsCsvImportSection

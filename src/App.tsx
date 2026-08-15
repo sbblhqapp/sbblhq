@@ -39,6 +39,7 @@ const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const Overlay = lazy(() => import('./pages/Overlay'));
 const OverlayControl = lazy(() => import('./pages/OverlayControl'));
 const Scorekeeper = lazy(() => import('./pages/Scorekeeper'));
+const OpsScoreboard = lazy(() => import('./pages/OpsScoreboard'));
 const Engage = lazy(() => import('./pages/Engage'));
 const Digest = lazy(() => import('./pages/Digest'));
 const OpsBiometrics = lazy(() => import('./pages/OpsBiometrics'));
@@ -165,6 +166,8 @@ const AppShell = () => (
           <Route path="/ops/biometrics" element={<RequireAdmin><OpsBiometrics /></RequireAdmin>} />
           <Route path="/overlay-control/:gameId" element={<RequireAdmin><OverlayControl /></RequireAdmin>} />
           <Route path="/scorekeeper/:gameId" element={<RequireAdmin><Scorekeeper /></RequireAdmin>} />
+          <Route path="/ops/scoreboard" element={<RequireAdmin><OpsScoreboard /></RequireAdmin>} />
+          <Route path="/ops/scoreboard/:gameId" element={<RequireAdmin><OpsScoreboard /></RequireAdmin>} />
           <Route path="/support" element={<Support />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />

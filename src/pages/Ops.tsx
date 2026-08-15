@@ -1,8 +1,9 @@
 import { parseCsv } from '@/lib/parseCsv';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { useOpsCsvUpload } from '@/hooks/useOpsCsvUpload';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Shield, Upload, Loader2, CheckCircle2, AlertCircle, Trophy, Image as ImageIcon, Save, Trash2, ArrowUp, ArrowDown, Activity } from 'lucide-react';
+import { Shield, Upload, Loader2, CheckCircle2, AlertCircle, Trophy, Image as ImageIcon, Save, Trash2, ArrowUp, ArrowDown, Activity, Zap, PlusCircle, Radio, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { PotgCard } from '@/components/ui/PotgCard';
 import { MediaLibraryTab } from '@/components/OpsMediaLibrary';
@@ -21,7 +22,7 @@ import { Link } from 'react-router-dom';
 import { resizeImageToFit, inferTargetDimensions } from '@/lib/imageResize';
 import { fetchScores, submitScoreManual, parseScoreboardImage } from '@/lib/api/scores';
 import { fetchOverlay } from '@/lib/api/overlay';
-import type { ScoreCategory, LeagueId } from '@/types';
+import type { ScoreCategory, LeagueId, GameStatus } from '@/types';
 import { LiveScoreboard } from '@/components/LiveScoreboard/LiveScoreboard';
 import { CourtsideQuickControls } from '@/components/LiveScoreboard/CourtsideQuickControls';
 import { PlayerStatsTracker } from '@/components/LiveScoreboard/PlayerStatsTracker';
@@ -430,6 +431,10 @@ const OpsPage = () => {
   // ── Admin CRUD form state ──────────────────────────────────────────────────
   const [scoreboardLeague, setScoreboardLeague] = useState<LeagueId>('wbl');
   const [scoreboardGameId, setScoreboardGameId] = useState<string>('');
+  const [quickHomeTeam, setQuickHomeTeam] = useState('');
+  const [quickAwayTeam, setQuickAwayTeam] = useState('');
+  const [showQuickGameLauncher, setShowQuickGameLauncher] = useState(false);
+  const [quickGameStatus, setQuickGameStatus] = useState<GameStatus>('live');
   const [teamForm, setTeamForm] = useState({ name: '', leagueId: 'wbl', seasonId: '', divisionId: '' });
   const [deleteTeamId, setDeleteTeamId] = useState('');
 
@@ -609,9 +614,9 @@ const OpsPage = () => {
   const playersList = (playersListQuery.data?.data ?? []) as PlayerRef[];
   const eventsList = (eventsListQuery.data?.data ?? []) as EventRef[];
   const schedulesList = (schedulesListQuery.data?.data ?? []) as ScheduleRef[];
-  const leaguesRef = bootstrapQuery.data?.references.leagues ?? [];
-  const seasonsRef = bootstrapQuery.data?.references.seasons ?? [];
-  const divisionsRef = bootstrapQuery.data?.references.divisions ?? [];
+  const leaguesRef = bootstrapQuery.data?.references?.leagues ?? [];
+  const seasonsRef = bootstrapQuery.data?.references?.seasons ?? [];
+  const divisionsRef = bootstrapQuery.data?.references?.divisions ?? [];
   const invalidateOpsLists = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ['ops-bootstrap'] }),
     queryClient.invalidateQueries({ queryKey: ['ops-list-teams'] }),
@@ -904,6 +909,38 @@ const OpsPage = () => {
     queryFn: () => fetchOverlay(scoreboardGameId),
     enabled: !!scoreboardGameId,
     refetchInterval: 2500,
+  });
+
+  const launchQuickGameMutation = useMutation({
+    mutationFn: async () => {
+      if (!quickHomeTeam.trim() || !quickAwayTeam.trim()) {
+        throw new Error('Please enter or select both Home and Away team names');
+      }
+      return submitScoreManual({
+        category: 'league',
+        leagueId: scoreboardLeague,
+        participant1Label: quickHomeTeam.trim(),
+        participant2Label: quickAwayTeam.trim(),
+        status: quickGameStatus,
+        gameDate: new Date().toISOString(),
+      });
+    },
+    onSuccess: async (res) => {
+      if (res.ok && res.gameId) {
+        toast.success(`Game launched successfully!`);
+        setScoreboardGameId(res.gameId);
+        setShowQuickGameLauncher(false);
+        setQuickHomeTeam('');
+        setQuickAwayTeam('');
+        await queryClient.invalidateQueries({ queryKey: ['ops-scores-list'] });
+        await queryClient.invalidateQueries({ queryKey: ['scores'] });
+      } else {
+        toast.error('Failed to create game');
+      }
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Game creation failed');
+    },
   });
 
   const scoreManualMutation = useMutation({
@@ -1326,108 +1363,320 @@ const OpsPage = () => {
         </div>
       </div></section>)}
 
-      {activeTab === 'scoreboard' && (
-        <section id="scoreboard" className="space-y-6 pt-6 font-['Space_Grotesk']">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#222222] pb-3">
-            <div>
-              <h2 className="text-2xl font-bold flex items-center gap-2 text-[#F5F5F0]">
-                <Shield className="w-6 h-6 text-[#C9A84C]" /> Live Tabulation Scoreboard
-              </h2>
-              <p className="text-xs text-[#8A8A8A] mt-0.5">
-                Real-time game monitoring with automatic live projected standings calculation.
-              </p>
-            </div>
-            {scoreboardGameId && (
+      {activeTab === 'scoreboard' && (() => {
+        const leagueUuid = leagueUuidForSlug(leaguesRef, scoreboardLeague);
+        const leagueTeams = leagueUuid ? teamsList.filter((t) => t.league_id === leagueUuid) : teamsList;
+        const leagueScores = scoresList.filter((g) => !g.leagueId || g.leagueId === scoreboardLeague);
+        const liveScores = leagueScores.filter((g) => g.status === 'live');
+        const scheduledScores = leagueScores.filter((g) => g.status === 'upcoming');
+        const finalScores = leagueScores.filter((g) => g.status === 'final');
+        const selectedGame = scoresList.find((g) => g.id === scoreboardGameId);
+
+        return (
+          <section id="scoreboard" className="space-y-6 pt-6 font-['Space_Grotesk']">
+            {/* ── Top Header ──────────────────────────────────────────────────────── */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#222222] pb-3">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2 text-[#F5F5F0]">
+                  <Shield className="w-6 h-6 text-[#C9A84C]" /> Live Tabulation Scoreboard
+                </h2>
+                <p className="text-xs text-[#8A8A8A] mt-0.5">
+                  1-Click match setup, real-time courtside scoring, player box scores & live projected standings.
+                </p>
+              </div>
               <div className="flex items-center gap-2">
-                <Link
-                  to={`/scorekeeper/${scoreboardGameId}`}
-                  className="rounded-lg bg-[#C9A84C] px-3 py-1.5 text-xs font-bold text-[#0A0A0A] hover:bg-[#E8C76A] transition-colors"
+                <button
+                  type="button"
+                  onClick={() => setShowQuickGameLauncher((prev) => !prev)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all shadow-md ${
+                    showQuickGameLauncher
+                      ? 'bg-[#1F1F1F] border border-[#333333] text-[#F5F5F0]'
+                      : 'bg-[#C9A84C] text-[#0A0A0A] hover:bg-[#E8C76A]'
+                  }`}
                 >
-                  Courtside Scorekeeper →
-                </Link>
-                <Link
-                  to={`/ops/scoreboard/${scoreboardGameId}`}
-                  className="rounded-lg bg-[#1F1F1F] border border-[#333333] px-3 py-1.5 text-xs font-bold text-[#F5F5F0] hover:bg-[#2A2A2A] transition-colors"
-                >
-                  Fullscreen Monitor →
-                </Link>
+                  <Zap className="h-3.5 w-3.5" />
+                  {showQuickGameLauncher ? 'Close Launcher' : '⚡ Start New Match'}
+                </button>
+                {scoreboardGameId && (
+                  <>
+                    <Link
+                      to={`/scorekeeper/${scoreboardGameId}`}
+                      className="rounded-lg bg-[#1F1F1F] border border-[#333333] px-3 py-1.5 text-xs font-bold text-[#F5F5F0] hover:bg-[#2A2A2A] transition-colors flex items-center gap-1"
+                    >
+                      <Radio className="h-3.5 w-3.5 text-[#C9A84C]" />
+                      Courtside Scorekeeper
+                    </Link>
+                    <Link
+                      to={`/ops/scoreboard/${scoreboardGameId}`}
+                      className="rounded-lg bg-[#1F1F1F] border border-[#333333] px-3 py-1.5 text-xs font-bold text-[#F5F5F0] hover:bg-[#2A2A2A] transition-colors"
+                    >
+                      Fullscreen Monitor →
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ── League & Match Controls ─────────────────────────────────────────── */}
+            <div className="rounded-xl border border-[#222222] bg-[#111111] p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[#8A8A8A] uppercase tracking-wider">League:</span>
+                  <div className="flex gap-1">
+                    {LEAGUE_REGISTRY.map((l) => (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => {
+                          setScoreboardLeague(l.id);
+                          setScoreboardGameId('');
+                        }}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                          scoreboardLeague === l.id
+                            ? 'bg-[#C9A84C] text-[#0A0A0A]'
+                            : 'bg-[#1A1A1A] text-[#8A8A8A] hover:text-[#F5F5F0]'
+                        }`}
+                      >
+                        {l.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-1 min-w-[240px] max-w-md">
+                  <span className="text-xs font-semibold text-[#8A8A8A] uppercase tracking-wider">Game:</span>
+                  <select
+                    value={scoreboardGameId}
+                    onChange={(e) => setScoreboardGameId(e.target.value)}
+                    className="flex-1 rounded-md border border-[#262626] bg-[#181818] px-3 py-1.5 text-xs font-medium text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
+                  >
+                    <option value="">Select a game to score / monitor...</option>
+                    {liveScores.length > 0 && (
+                      <optgroup label={`🔴 LIVE MATCHES (${liveScores.length})`}>
+                        {liveScores.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            🔴 {g.awayLabel} {g.awayScore ?? 0} - {g.homeScore ?? 0} {g.homeLabel}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {scheduledScores.length > 0 && (
+                      <optgroup label={`⏰ SCHEDULED / UPCOMING (${scheduledScores.length})`}>
+                        {scheduledScores.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            ⏰ {g.awayLabel} vs {g.homeLabel}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {finalScores.length > 0 && (
+                      <optgroup label={`🏁 COMPLETED MATCHES (${finalScores.length})`}>
+                        {finalScores.slice(0, 15).map((g) => (
+                          <option key={g.id} value={g.id}>
+                            🏁 {g.awayLabel} {g.awayScore ?? 0} - {g.homeScore ?? 0} {g.homeLabel} (FINAL)
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* 🔴 Active Live Matches Quick Badges */}
+              {liveScores.length > 0 && (
+                <div className="pt-2 border-t border-[#1F1F1F] flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#E63946] flex items-center gap-1">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    Live Now:
+                  </span>
+                  {liveScores.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setScoreboardGameId(g.id)}
+                      className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all ${
+                        scoreboardGameId === g.id
+                          ? 'border-[#C9A84C] bg-[#C9A84C]/20 text-[#C9A84C]'
+                          : 'border-[#333333] bg-[#181818] text-[#F5F5F0] hover:border-[#C9A84C]/60'
+                      }`}
+                    >
+                      {g.awayLabel} {g.awayScore ?? 0} - {g.homeScore ?? 0} {g.homeLabel}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── ⚡ 1-Click Game Launcher Panel ─────────────────────────────────── */}
+            {(showQuickGameLauncher || !scoreboardGameId) && (
+              <div className="rounded-xl border border-[#C9A84C]/40 bg-gradient-to-b from-[#181818] to-[#111111] p-5 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-[#222222] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-[#C9A84C]" />
+                    <h3 className="text-base font-bold text-[#F5F5F0]">1-Click Game Setup & Live Scoring Launch</h3>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#C9A84C] bg-[#C9A84C]/10 px-2 py-0.5 rounded-full">
+                    NO EXTRA STEPS · INSTANT TABULATION
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Away Team */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#8A8A8A]">
+                      Away Team (Visitor) *
+                    </label>
+                    {leagueTeams.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <select
+                          aria-label="Select Away Team"
+                          value={quickAwayTeam}
+                          onChange={(e) => setQuickAwayTeam(e.target.value)}
+                          className="w-full rounded-lg border border-[#333333] bg-[#181818] px-3 py-2 text-sm text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
+                        >
+                          <option value="">Select team from {LEAGUE_REGISTRY.find(l => l.id === scoreboardLeague)?.name}...</option>
+                          {leagueTeams.map((t) => (
+                            <option key={t.id} value={t.name}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Or type custom away team..."
+                          value={quickAwayTeam}
+                          onChange={(e) => setQuickAwayTeam(e.target.value)}
+                          className="w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-xs text-[#F5F5F0] placeholder-[#666666] focus:border-[#C9A84C] focus:outline-none"
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="e.g. Away Ballers"
+                        value={quickAwayTeam}
+                        onChange={(e) => setQuickAwayTeam(e.target.value)}
+                        className="w-full rounded-lg border border-[#333333] bg-[#181818] px-3 py-2 text-sm text-[#F5F5F0] placeholder-[#666666] focus:border-[#C9A84C] focus:outline-none"
+                      />
+                    )}
+                  </div>
+
+                  {/* Home Team */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#8A8A8A]">
+                      Home Team (Host) *
+                    </label>
+                    {leagueTeams.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <select
+                          aria-label="Select Home Team"
+                          value={quickHomeTeam}
+                          onChange={(e) => setQuickHomeTeam(e.target.value)}
+                          className="w-full rounded-lg border border-[#333333] bg-[#181818] px-3 py-2 text-sm text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
+                        >
+                          <option value="">Select team from {LEAGUE_REGISTRY.find(l => l.id === scoreboardLeague)?.name}...</option>
+                          {leagueTeams.map((t) => (
+                            <option key={t.id} value={t.name}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Or type custom home team..."
+                          value={quickHomeTeam}
+                          onChange={(e) => setQuickHomeTeam(e.target.value)}
+                          className="w-full rounded-lg border border-[#262626] bg-[#141414] px-3 py-1.5 text-xs text-[#F5F5F0] placeholder-[#666666] focus:border-[#C9A84C] focus:outline-none"
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="e.g. Home Shooters"
+                        value={quickHomeTeam}
+                        onChange={(e) => setQuickHomeTeam(e.target.value)}
+                        className="w-full rounded-lg border border-[#333333] bg-[#181818] px-3 py-2 text-sm text-[#F5F5F0] placeholder-[#666666] focus:border-[#C9A84C] focus:outline-none"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#8A8A8A]">Game Status:</span>
+                    <div className="flex rounded-lg bg-[#141414] p-0.5 border border-[#262626]">
+                      <button
+                        type="button"
+                        onClick={() => setQuickGameStatus('live')}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                          quickGameStatus === 'live' ? 'bg-[#E63946] text-white' : 'text-[#8A8A8A] hover:text-[#F5F5F0]'
+                        }`}
+                      >
+                        🔴 Live Now
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickGameStatus('upcoming')}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                          quickGameStatus === 'upcoming' ? 'bg-[#C9A84C] text-[#0A0A0A]' : 'text-[#8A8A8A] hover:text-[#F5F5F0]'
+                        }`}
+                      >
+                        ⏰ Scheduled
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={launchQuickGameMutation.isPending || !quickAwayTeam.trim() || !quickHomeTeam.trim()}
+                    onClick={() => launchQuickGameMutation.mutate()}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#C9A84C] px-5 py-2.5 text-sm font-bold text-[#0A0A0A] hover:bg-[#E8C76A] active:scale-95 transition-all shadow-lg disabled:opacity-50"
+                  >
+                    {launchQuickGameMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Launching...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4" /> ⚡ Launch Game & Start Scoring Now
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
-          </div>
 
-          <div className="rounded-xl border border-[#222222] bg-[#111111] p-4 flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#8A8A8A] uppercase tracking-wider">League:</span>
-              <div className="flex gap-1">
-                {LEAGUE_REGISTRY.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => setScoreboardLeague(l.id)}
-                    className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                      scoreboardLeague === l.id
-                        ? 'bg-[#C9A84C] text-[#0A0A0A]'
-                        : 'bg-[#1A1A1A] text-[#8A8A8A] hover:text-[#F5F5F0]'
-                    }`}
-                  >
-                    {l.name}
-                  </button>
-                ))}
+            {/* ── Live Tabulation Scoreboard & Controls ───────────────────────────── */}
+            {scoreboardGameId && (
+              <div className="space-y-6">
+                <LiveScoreboard
+                  gameId={scoreboardGameId}
+                  homeTeamName={selectedGame?.homeLabel ?? 'Home'}
+                  awayTeamName={selectedGame?.awayLabel ?? 'Away'}
+                  className="shadow-2xl"
+                />
+                <CourtsideQuickControls
+                  gameId={scoreboardGameId}
+                  homeTeamName={selectedGame?.homeLabel ?? 'Home'}
+                  awayTeamName={selectedGame?.awayLabel ?? 'Away'}
+                  overlayState={opsTabOverlayQuery.data?.overlay ?? null}
+                  onMutationSuccess={() => {
+                    opsTabOverlayQuery.refetch();
+                  }}
+                />
+                <PlayerStatsTracker
+                  gameId={scoreboardGameId}
+                  onStatChange={() => {
+                    opsTabOverlayQuery.refetch();
+                  }}
+                />
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-              <span className="text-xs font-semibold text-[#8A8A8A] uppercase tracking-wider">Game:</span>
-              <select
-                value={scoreboardGameId}
-                onChange={(e) => setScoreboardGameId(e.target.value)}
-                className="flex-1 rounded-md border border-[#262626] bg-[#181818] px-3 py-1.5 text-xs font-medium text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
-              >
-                <option value="">Select a game...</option>
-                {scoresList
-                  .filter((g) => !g.leagueId || g.leagueId === scoreboardLeague)
-                  .map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.awayLabel} vs {g.homeLabel} ({g.status.toUpperCase()})
-                    </option>
-                  ))}
-              </select>
-            </div>
-          </div>
-
-          {scoreboardGameId ? (
-            <div className="space-y-6">
-              <LiveScoreboard
-                gameId={scoreboardGameId}
-                homeTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.homeLabel ?? 'Home'}
-                awayTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.awayLabel ?? 'Away'}
-                className="shadow-2xl"
-              />
-              <CourtsideQuickControls
-                gameId={scoreboardGameId}
-                homeTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.homeLabel ?? 'Home'}
-                awayTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.awayLabel ?? 'Away'}
-                overlayState={opsTabOverlayQuery.data?.overlay ?? null}
-                onMutationSuccess={() => {
-                  opsTabOverlayQuery.refetch();
-                }}
-              />
-              <PlayerStatsTracker
-                gameId={scoreboardGameId}
-                onStatChange={() => {
-                  opsTabOverlayQuery.refetch();
-                }}
-              />
-            </div>
-          ) : (
-            <div className="rounded-xl border border-[#222222] bg-[#111111] p-8 text-center text-[#8A8A8A]">
-              <Activity className="h-10 w-10 mx-auto mb-3 text-[#8A8A8A]" />
-              <h3 className="text-base font-bold text-[#F5F5F0]">No Game Selected</h3>
-              <p className="text-xs mt-1">Select a game from the dropdown above to view live tabulation.</p>
-            </div>
-          )}
-        </section>
-      )}
+            )}
+          </section>
+        );
+      })()}
 
       {activeTab === 'teams' && (<section id="teams" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Teams</h2><div className="space-y-4">
           <OpsCsvImportSection

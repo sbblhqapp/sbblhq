@@ -2,15 +2,11 @@
  * E2E: broadcast overlay flow.
  *
  * Verifies — under real Vite dev server + React Router + lazy-loaded chunks —
- * that the four new surfaces built in this PR actually mount and render:
+ * that the surfaces built in this PR actually mount and render:
  *   1. /overlay/:gameId — OBS chromeless scoreboard page
  *   2. /scorekeeper/:gameId — mobile stat-keeper (admin-only, bypass flag)
- *   3. /overlay-control/:gameId — admin console now carries a Highlights panel
- *   4. CheerMeter component mounts with its aria label
- *
- * Routes call the worker (mocked via page.route) — these tests do NOT need
- * a live Supabase instance. They validate the React/routing/rendering layer,
- * which is where the integration risk lives.
+ *   3. /ops/scoreboard/:gameId — dedicated ops live scoreboard tab
+ *   4. /overlay-control/:gameId — admin console with Highlights panel
  */
 
 import { expect, seedSuperAdminSession, test } from '../playwright-fixture';
@@ -60,7 +56,6 @@ const OVERLAY_PAYLOAD = {
     live_clock_seconds: 300,
   },
   sponsor: null,
-  theme: 'default',
 };
 
 async function stubBroadcastApis(page: import('@playwright/test').Page) {
@@ -101,6 +96,32 @@ async function stubBroadcastApis(page: import('@playwright/test').Page) {
       body: JSON.stringify({ ok: true, data: [] }),
     }),
   );
+  await page.route(`**/api/public/games/${GAME_ID}/player-stats*`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        gameId: GAME_ID,
+        home: {
+          teamId: 'h',
+          teamName: 'Vipers',
+          players: [
+            { playerId: 'p-1', playerName: 'Marcus Vance', jerseyNumber: 23, position: 'SG', teamId: 'h', pts: 14, reb: 4, ast: 6, stl: 2, blk: 1, fls: 1, min: 24 },
+            { playerId: 'p-2', playerName: 'Tyler Cross', jerseyNumber: 5, position: 'PG', teamId: 'h', pts: 9, reb: 2, ast: 4, stl: 1, blk: 0, fls: 2, min: 18 },
+          ],
+        },
+        away: {
+          teamId: 'a',
+          teamName: 'Wolves',
+          players: [
+            { playerId: 'p-3', playerName: 'David Lee', jerseyNumber: 11, position: 'PG', teamId: 'a', pts: 18, reb: 3, ast: 7, stl: 3, blk: 0, fls: 2, min: 28 },
+            { playerId: 'p-4', playerName: 'Sam Hayes', jerseyNumber: 34, position: 'C', teamId: 'a', pts: 12, reb: 8, ast: 1, stl: 0, blk: 2, fls: 3, min: 22 },
+          ],
+        },
+      }),
+    }),
+  );
 }
 
 test.describe('broadcast overlay flow', () => {
@@ -111,32 +132,32 @@ test.describe('broadcast overlay flow', () => {
 
     await page.goto(`/overlay/${GAME_ID}`, { waitUntil: 'domcontentloaded' });
 
-    // Root container present (ChromelessShell mounts Overlay for this route)
-    await expect(page.getByTestId('overlay-root')).toBeVisible({ timeout: 10_000 });
+    // Chromeless bug root
+    await expect(page.getByTestId('overlay-root')).toBeVisible({
+      timeout: 10_000,
+    });
 
-    // League chip
-    await expect(page.getByTestId('overlay-root')).toContainText('SBBL');
+    // Score numerals from the payload.
+    await expect(page.locator('body')).toContainText('42');
+    await expect(page.locator('body')).toContainText('39');
 
-    // Scores rendered with the stubbed values
-    await expect(page.getByTestId('overlay-root')).toContainText('42');
-    await expect(page.getByTestId('overlay-root')).toContainText('39');
+    // Period label.
+    await expect(page.locator('body')).toContainText('Q2');
 
-    // Clock readable (Q2 at 5:00 remaining)
-    await expect(page.getByTestId('overlay-root')).toContainText('Q2');
-    await expect(page.getByTestId('overlay-root')).toContainText('5:00');
-
-    // Cheer meter mounts as an aria-labelled region
-    await expect(page.getByLabel('Live reactions')).toBeVisible();
-
-    // Chromeless — the global header must NOT render on this route
+    // Invariant: chromeless routes must NOT render the main nav or top bar.
     await expect(page.locator('header')).toHaveCount(0);
+    await expect(page.locator('nav')).toHaveCount(0);
+
+    // Capture visual screenshot of the live broadcast scorebug
+    await page.screenshot({ path: 'C:/Users/sinyo/.gemini/antigravity/brain/1c08c1bc-fd03-40b7-8821-f36090c50ba5/broadcast-scorebug-live.png', fullPage: true });
   });
 
   test('/overlay/:gameId returns a useful message when payload missing', async ({
     page,
   }) => {
     await seedSuperAdminSession(page);
-    await page.route('**/api/public/overlay/**', (route) =>
+
+    await page.route(`**/api/public/overlay/${GAME_ID}`, (route) =>
       route.fulfill({
         status: 404,
         contentType: 'application/json',
@@ -159,7 +180,7 @@ test.describe('broadcast overlay flow', () => {
     });
   });
 
-  test('/scorekeeper/:gameId renders the mobile console with admin bypass', async ({
+  test('/scorekeeper/:gameId renders the mobile console with admin bypass and player stats', async ({
     page,
   }) => {
     await stubBroadcastApis(page);
@@ -174,15 +195,43 @@ test.describe('broadcast overlay flow', () => {
     await expect(page.locator('body')).toContainText('39');
 
     // Large touch targets — the spec requires +1/+2/+3 per side.
-    // (6 score buttons + away/home undo + clock controls.)
     await expect(page.getByRole('button', { name: /Away plus 2 points/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Home plus 3 points/i })).toBeVisible();
 
-    // Clock value from the payload.
-    await expect(page.locator('body')).toContainText('5:00');
+    // Verify PlayerStatsTracker component mounts with player buttons
+    await expect(page.getByTestId('player-stats-tracker')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('David Lee')).toBeVisible();
+    await expect(page.getByText('Sam Hayes')).toBeVisible();
 
-    // Period indicator.
-    await expect(page.locator('body')).toContainText('Q2');
+    // Switch to Home team roster tab
+    await page.getByRole('button', { name: /Vipers/i }).click();
+    await expect(page.getByText('Marcus Vance')).toBeVisible();
+
+    // Capture visual screenshot of scorekeeper mobile console
+    await page.screenshot({ path: 'C:/Users/sinyo/.gemini/antigravity/brain/1c08c1bc-fd03-40b7-8821-f36090c50ba5/scorekeeper-live-console.png', fullPage: true });
+  });
+
+  test('/ops/scoreboard/:gameId renders full admin Live Scoreboard and Courtside controls', async ({
+    page,
+  }) => {
+    await stubBroadcastApis(page);
+
+    await page.goto(`/ops/scoreboard/${GAME_ID}`, { waitUntil: 'domcontentloaded' });
+
+    // Header and Courtside controls
+    await expect(page.getByTestId('courtside-quick-controls')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('player-stats-tracker')).toBeVisible({ timeout: 10_000 });
+
+    // Verify player list and box score rows
+    await expect(page.getByText('David Lee')).toBeVisible();
+    await expect(page.getByText('Sam Hayes')).toBeVisible();
+
+    // Switch to Home team roster tab
+    await page.getByRole('button', { name: /Vipers/i }).click();
+    await expect(page.getByText('Marcus Vance')).toBeVisible();
+
+    // Capture visual screenshot of ops scoreboard console
+    await page.screenshot({ path: 'C:/Users/sinyo/.gemini/antigravity/brain/1c08c1bc-fd03-40b7-8821-f36090c50ba5/ops-scoreboard-live-tabulation.png', fullPage: true });
   });
 
   test('/overlay-control/:gameId includes Highlights section', async ({

@@ -37,6 +37,11 @@ import {
   handleOverlayStatus,
 } from "./routes/overlay";
 import {
+  handleGetGamePlayerStats,
+  handleOpsRecordPlayerStat,
+  handleOpsQuickAddPlayer,
+} from "./routes/player-stats";
+import {
   handlePublicPollsList,
   handlePublicPollResults,
   handlePublicEngagementLeaderboard,
@@ -6997,6 +7002,11 @@ const routes: Array<{ method: string; path: string; handler: Handler }> = [
   { method: "POST", path: "/api/ops/overlay/:gameId/period",     handler: handleOverlayPeriod },
   { method: "POST", path: "/api/ops/overlay/:gameId/reset",      handler: handleOverlayReset },
   { method: "POST", path: "/api/ops/overlay/:gameId/status",     handler: handleOverlayStatus },
+
+  // ── Game Player Stats & Roster ────────────────────────────────────────
+  { method: "GET",  path: "/api/public/games/:gameId/player-stats", handler: handleGetGamePlayerStats },
+  { method: "POST", path: "/api/ops/games/:gameId/player-stats",   handler: handleOpsRecordPlayerStat },
+  { method: "POST", path: "/api/ops/games/:gameId/quick-player",   handler: handleOpsQuickAddPlayer },
 
   // ── Engagement (polls, predictions, trivia, gamification) ────────────
   { method: "GET",  path: "/api/public/engagement/polls",            handler: handlePublicPollsList },

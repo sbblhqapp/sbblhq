@@ -22,6 +22,7 @@ import {
   type OverlayPayload,
 } from '@/lib/api/overlay';
 import { LiveScoreboard } from '@/components/LiveScoreboard/LiveScoreboard';
+import { PlayerStatsTracker } from '@/components/LiveScoreboard/PlayerStatsTracker';
 
 // ── Undo stack types ───────────────────────────────────────────────────────
 type UndoEntry =
@@ -284,6 +285,16 @@ export default function ScorekeeperPage() {
           homeTeamLogo={game.home_team?.logo_url ?? null}
           awayTeamLogo={game.away_team?.logo_url ?? null}
           initialScore={overlay}
+        />
+      </section>
+
+      {/* ── Individual Player Stats & Box Score Tracker ─────────────────── */}
+      <section className="mb-4" aria-label="Individual Player Stats">
+        <PlayerStatsTracker
+          gameId={gameId}
+          onStatChange={() => {
+            query.refetch();
+          }}
         />
       </section>
 

@@ -24,6 +24,7 @@ import { fetchOverlay } from '@/lib/api/overlay';
 import type { ScoreCategory, LeagueId } from '@/types';
 import { LiveScoreboard } from '@/components/LiveScoreboard/LiveScoreboard';
 import { CourtsideQuickControls } from '@/components/LiveScoreboard/CourtsideQuickControls';
+import { PlayerStatsTracker } from '@/components/LiveScoreboard/PlayerStatsTracker';
 
 type Tab = 'overview' | 'scores' | 'scoreboard' | 'teams' | 'players' | 'schedules' | 'events' | 'store' | 'potg' | 'roster' | 'media' | 'history';
 
@@ -1408,6 +1409,12 @@ const OpsPage = () => {
                 awayTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.awayLabel ?? 'Away'}
                 overlayState={opsTabOverlayQuery.data?.overlay ?? null}
                 onMutationSuccess={() => {
+                  opsTabOverlayQuery.refetch();
+                }}
+              />
+              <PlayerStatsTracker
+                gameId={scoreboardGameId}
+                onStatChange={() => {
                   opsTabOverlayQuery.refetch();
                 }}
               />

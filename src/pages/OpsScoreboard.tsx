@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { LiveScoreboard } from '@/components/LiveScoreboard/LiveScoreboard';
 import { CourtsideQuickControls } from '@/components/LiveScoreboard/CourtsideQuickControls';
+import { PlayerStatsTracker } from '@/components/LiveScoreboard/PlayerStatsTracker';
 import { fetchOverlay, type OverlayPayload } from '@/lib/api/overlay';
 import { fetchScores, submitScoreManual } from '@/lib/api/scores';
 import { LEAGUE_REGISTRY } from '@/lib/leagues';
@@ -307,6 +308,14 @@ export default function OpsScoreboardPage() {
             awayTeamName={game?.away_team?.name ?? gamesList.find((g) => g.id === activeGameId)?.awayLabel ?? 'Away'}
             overlayState={overlay}
             onMutationSuccess={() => {
+              overlayQuery.refetch();
+            }}
+          />
+
+          {/* ── Individual Player Stats & Live Box Score ─────────────────────── */}
+          <PlayerStatsTracker
+            gameId={activeGameId}
+            onStatChange={() => {
               overlayQuery.refetch();
             }}
           />

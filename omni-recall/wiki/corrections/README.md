@@ -19,3 +19,5 @@ Each correction should capture:
 - [[2026-08-09-repo-migration-sbblhqapp.md]] — Canonical remote migrated `apexbusiness-systems/sbbl-hq` → `sbblhqapp/sbblhq`; two latent script defects found and fixed (Markdown-escaped ENV parsing, ambient-env project retargeting).
 - [[2026-08-09-regular-admin-permission-model.md]] — Ops Console is now a `league_admin` surface (owner-defined matrix: content ops yes, live-PPV no, comp codes capped at 5/rolling-24h, store excluded); mutation-tested.
 - [[2026-08-09-ops-console-uuid-elimination.md]] — Every Manual Ops form resolves identifiers automatically instead of requiring a raw UUID; uncovered and fixed a live rule-10 league-code-resolution violation in `handleImportRoute`.
+- [[2026-08-15-unified-live-scoring-tabulation-and-player-stats.md]] — Unified 1-Click Game Launcher on `/ops` Live Tabulation, courtside scoring controls, 1-tap player stats attribution with auto-score sync, and fail-closed cold-state protection.
+

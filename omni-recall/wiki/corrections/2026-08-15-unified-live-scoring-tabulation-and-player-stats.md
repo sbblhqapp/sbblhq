@@ -1,0 +1,21 @@
+# 2026-08-15: Unified Live Scoring Tabulation, Courtside Controls & Individual Player Stats
+
+- **Date:** 2026-08-15
+- **Original State / Problem:** 
+  - Starting a live game scoring session previously required navigating through Schedules, looking up matches, copying identifiers, and finding games in an unstructured 50-game list.
+  - Recording player statistics was uncoupled from live team scoring, forcing scorekeepers to perform duplicate entry (logging team score increments and then separately updating player statistics).
+  - Cold-state loads on `/ops` and `/overlay/:gameId` were vulnerable to runtime errors when references or live payloads were initially empty.
+- **Corrected State:**
+  - **⚡ 1-Click Game Launch Panel:** Added directly onto `/ops` (Live Tabulation tab). Allows operators to pick teams directly from registered rosters or input custom names and launch a live game with live scoreboard mounting in < 2 seconds.
+  - **Deduplicated Courtside Controls & Live Box Score:** Unified `<LiveScoreboard />`, `<CourtsideQuickControls />`, and `<PlayerStatsTracker />` into a single, synchronized component suite.
+  - **1-Tap Player Stat Attribution:** Attributing `+1 FT`, `+2 FG`, `+3 3PT`, `REB`, `AST`, `STL`, `BLK`, `FLS` directly updates the player's line, automatically synchronizes the team scoreboard, animates the scoreboard banner, and triggers the live projected standings preview.
+  - **Fail-Closed Runtime Safety:** Added safe optional chaining (`bootstrapQuery.data?.references?.leagues`) and missing game payload guards in `Overlay.tsx`.
+  - **Courtside Walk-on Management:** Rapid courtside roster addition (`+ Quick Add Player`) allows walk-on players to be registered in under 3 seconds without interrupting game scoring.
+- **Scope:** Project-wide (Ops Console, Mobile Scorekeeper, OBS Overlay, Public Standings API).
+- **Affected Surfaces:**
+  - `src/pages/Ops.tsx`
+  - `src/pages/Overlay.tsx`
+  - `src/pages/Scorekeeper.tsx`
+  - `src/pages/OpsScoreboard.tsx`
+  - `src/components/LiveScoreboard/` (`LiveScoreboard.tsx`, `CourtsideQuickControls.tsx`, `PlayerStatsTracker.tsx`)
+- **Promotion Decision:** Durable System Capability & Quality Standard.

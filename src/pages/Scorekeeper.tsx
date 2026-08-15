@@ -21,6 +21,7 @@ import {
   updateGameStatus,
   type OverlayPayload,
 } from '@/lib/api/overlay';
+import { LiveScoreboard } from '@/components/LiveScoreboard/LiveScoreboard';
 
 // ── Undo stack types ───────────────────────────────────────────────────────
 type UndoEntry =
@@ -273,6 +274,18 @@ export default function ScorekeeperPage() {
           </span>
         </div>
       </header>
+
+      {/* ── Live Tabulation Scoreboard & Projected Standings ─────────────── */}
+      <section className="mb-4" aria-label="Live Tabulation Scoreboard">
+        <LiveScoreboard
+          gameId={gameId}
+          homeTeamName={homeName}
+          awayTeamName={awayName}
+          homeTeamLogo={game.home_team?.logo_url ?? null}
+          awayTeamLogo={game.away_team?.logo_url ?? null}
+          initialScore={overlay}
+        />
+      </section>
 
       {/* 2. Big score row ──────────────────────────────────────────────── */}
       <section

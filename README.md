@@ -1,4 +1,4 @@
-<!-- Version: v1.3.0 | Date: 2026-07-22 | Status: Current -->
+<!-- Version: v1.9.3 | Date: 2026-08-15 | Status: Current -->
 # SBBL HQ
 
 Three-league basketball super app by APEX Business Systems Ltd., Edmonton, Alberta
@@ -12,6 +12,7 @@ Three-league basketball super app by APEX Business Systems Ltd., Edmonton, Alber
 ## Stack
 
 - **Frontend:** Vite + React + TypeScript (strict mode enabled; see tsconfig.app.json)
+- **Live Scoring & Tabulation:** 1-Click Game Launch, `<LiveScoreboard />`, `<CourtsideQuickControls />`, `<PlayerStatsTracker />`, real-time OBS broadcast scorebug (`/overlay/:gameId`), and live projected standings preview (`public.fn_live_standings_preview`)
 - **Performance & Web Vitals:** Cumulative Layout Shift (CLS) zero-shift target (<0.01), layout-reserved skeleton containers
 - **Styling:** Tailwind CSS (dark-first, `#C9A84C` gold accent)
 - **Database:** Supabase (PostgreSQL + Realtime + Auth + Storage)
@@ -94,7 +95,7 @@ All documentation lives in [`docs/`](docs/README.md). Key entry points:
 | Security | [Security Model](docs/security/SECURITY_MODEL_v1.2.0.md) · [RLS Matrix](docs/security/RLS_MATRIX_v1.2.0.md) |
 | Operations | [Operations Runbook](docs/operations/OPERATIONS_RUNBOOK_v1.6.0.md) · [Supabase Monitoring](docs/operations/SUPABASE_MONITORING_RUNBOOK_v1.0.0.md) · [External Bindings](docs/operations/EXTERNAL_BINDINGS_v1.0.0.md) |
 | Deployment | [Supabase Setup](docs/deployment/SUPABASE_SETUP_v1.1.0.md) · [Cloudflare Deploy](docs/deployment/DEPLOY_CLOUDFLARE_v1.2.0.md) · [PWA + Capacitor](docs/deployment/PWA_CAPACITOR_SETUP_v1.1.0.md) |
-| Features | [Stream Gating](docs/features/STREAM_GATING_v1.7.0.md) · [Stats Pipeline](docs/features/STATS_PIPELINE_v1.2.0.md) · [Pipeline Map](docs/features/PIPELINE_MAP_v1.3.0.md) · [Broadcast Overlay & Engagement](docs/features/BROADCAST_OVERLAY_ENGAGEMENT_v1.0.0.md) |
+| Features | [Stream Gating](docs/features/STREAM_GATING_v1.7.0.md) · [Live Scoring & Stats](docs/features/LIVE_SCORING_AND_PLAYER_STATS_v1.0.0.md) · [Stats Pipeline](docs/features/STATS_PIPELINE_v1.2.0.md) · [Pipeline Map](docs/features/PIPELINE_MAP_v1.3.0.md) · [Broadcast Overlay & Engagement](docs/features/BROADCAST_OVERLAY_ENGAGEMENT_v1.0.0.md) |
 | Onboarding | [Developer Onboarding](docs/onboarding/DEVELOPER_ONBOARDING_v1.0.0.md) |
 | Quality | [Release Gate 2026-04-11](docs/quality/RELEASE_GATE_AUDIT_2026-04-11_v1.4.0.md) · [Livestream Integrity Audit](docs/quality/LIVESTREAM_INGEST_BROADCAST_SYSTEM_INTEGRITY_AUDIT_2026-04-09_v1.0.0.md) |
 | Policies | [One Device](ONE_DEVICE_POLICY.md) · [Paywall Enforcement](PAYWALL_ENFORCEMENT_POLICY.md) · [Resume Policy](RESUME_POLICY.md) · [Stream Test Strategy](STREAM_TEST_STRATEGY.md) |

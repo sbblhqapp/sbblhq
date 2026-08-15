@@ -1,8 +1,8 @@
-<!-- Version: v2.7.0 | Date: 2026-08-09 | Status: Current -->
+<!-- Version: v2.8.0 | Date: 2026-08-15 | Status: Current -->
 # SBBL HQ — Documentation Hub
 
-**Version:** v2.7.0
-**Last Updated:** 2026-08-09
+**Version:** v2.8.0
+**Last Updated:** 2026-08-15
 **Maintainer:** APEX Business Systems Ltd. — Engineering Lead
 
 > Single source of truth for all SBBL HQ engineering, operational, and product documentation.
@@ -84,6 +84,7 @@ docs/
 
 | Document | Version | Description |
 |---|---|---|
+| [LIVE SCORING & PLAYER STATS](./features/LIVE_SCORING_AND_PLAYER_STATS_v1.0.0.md) | v1.0.0 | 1-Click Game Launch, courtside scoring controls, 1-tap player attribution, and live standings projection |
 | [STATS PIPELINE](./features/STATS_PIPELINE_v1.2.0.md) | v1.2.0 | 4-stage stat submission + materialized standings + react-window virtualization |
 | [BROADCAST OVERLAY & ENGAGEMENT](./features/BROADCAST_OVERLAY_ENGAGEMENT_v1.0.0.md) | v1.0.0 | Chromeless OBS overlay, polls/predictions/trivia, watch parties, sponsor rotation, AI weekly digest, OBS remote control |
 | [STREAM GATING](./features/STREAM_GATING_v1.7.0.md) | v1.7.1 | PPV entitlement, comp codes, universal URL detection, WHIP browser ingest, origin-aware CORS |

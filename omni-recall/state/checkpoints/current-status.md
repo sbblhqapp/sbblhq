@@ -1,28 +1,34 @@
 # Current Status
 
-- date: 2026-08-09
+- date: 2026-08-15
 - omni_recall_status: active
 - historical_backfill_status: pending_external_exports
-- correction_ledger_status: active — 7 records (see wiki/corrections/README.md)
+- correction_ledger_status: active — 8 records (see wiki/corrections/README.md)
 - source_index_status: active
 - canonical_blueprint_status: active
 
-## Repo State (verified 2026-08-09)
+## Repo State (verified 2026-08-15)
 
 - **Canonical remote:** `https://github.com/sbblhqapp/sbblhq` (migrated
   2026-08-09 from the archived `apexbusiness-systems/sbbl-hq`; see
   `docs/ops/REPO_MIGRATION_2026-08-09.md` and correction
   [[2026-08-09-repo-migration-sbblhqapp]]).
 - **Deployed:** Cloudflare Worker `sbbl-hq-worker`, zone `sbbl-hq.icu`.
-  Latest deploy verified live 2026-08-09 (PR #2 merge, `deploy.yml` run
-  success, `/ops/health` returned `ok:true`).
-- **Latest merged work (this session, 2026-08-09):**
-  1. Repo migration + `statssbbl@gmail.com` granted regular admin
-     (`league_admin`, not `super_admin`) — PR #1.
-  2. Regular-admin (`league_admin`) permission model for the Ops Console,
-     mutation-tested — PR #1.
-  3. Ops Console UUID elimination + a live rule-10 league-code-resolution
-     bug fix in `handleImportRoute` — PR #2.
+  Latest deploy verified live 2026-08-15 (PR #11 merge, all 11 CI checks passed,
+  `/ops/health` returned `ok:true`).
+- **Latest merged work (2026-08-15):**
+  1. LiveScoreboard mounting across `/scorekeeper/:gameId` and dedicated
+     `/ops/scoreboard/:gameId` full-screen monitor — PR #7.
+  2. Read-only SQL projection `public.fn_live_standings_preview` & public Worker
+     route `GET /api/public/live-standings/:leagueId/:seasonId` — PR #7.
+  3. ⚡ 1-Click Game Setup & Launch panel on `/ops` Live Tabulation — PR #11.
+  4. Unified `<LiveScoreboard />`, `<CourtsideQuickControls />`, and
+     `<PlayerStatsTracker />` with 1-tap player attribution (`+1 FT, +2 FG, +3 3PT,
+     REB, AST, STL, BLK, FLS`) synchronized directly with team scoring,
+     scoreboard pulse animations, and projected standings — PR #11.
+  5. Fail-closed cold-state optional chaining on references (`bootstrapQuery.data?.references?.leagues`)
+     and missing game payload guards on OBS Overlay (`/overlay/:gameId`) — PR #11.
+
 
 ## Known backfill gap
 

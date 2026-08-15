@@ -1,8 +1,26 @@
-<!-- Version: v1.9.2 | Date: 2026-08-09 | Status: Current -->
+<!-- Version: v1.9.3 | Date: 2026-08-15 | Status: Current -->
 # CHANGELOG
 
 All notable changes to SBBL HQ are documented in this file.
 Versioning follows [semantic versioning](https://semver.org) with UTC date stamps.
+
+---
+
+## [1.9.3] - 2026-08-15
+
+### Added — Unified Live Scoring Tabulation, 1-Click Game Setup & Courtside Player Stats
+
+- **⚡ 1-Click Game Setup & Courtside Launcher:** Launch live matches on `/ops` (Live Tabulation tab) directly from registered league rosters or custom names in < 2 seconds without navigating away or looking up UUIDs.
+- **Unified Courtside Controls (`<CourtsideQuickControls />`):** Mobile-optimized courtside touch controls for point increments (`+1, +2, +3`), clock management (`START / STOP, ±10s, SET`), fouls (`+1 FL`), possession toggle, and quarter advancement.
+- **1-Tap Player Stat Attribution (`<PlayerStatsTracker />`):** Full box score recording (`+1 FT, +2 FG, +3 3PT, REB, AST, STL, BLK, FLS`) with automatic team score and standings synchronization.
+- **Courtside Walk-on Management:** Rapid courtside roster addition (`+ Quick Add Player`) allowing walk-on players to be registered in under 3 seconds.
+- **Real-Time Standings Projection:** Database projection `public.fn_live_standings_preview` & public Worker endpoint `GET /api/public/live-standings/:leagueId/:seasonId` dynamically tabulating live in-game standings shifts.
+- **Fail-Closed Runtime Safety:** Safe optional chaining across references (`bootstrapQuery.data?.references?.leagues`) and null-safe OBS overlay rendering (`/overlay/:gameId`).
+
+### Added — Verification & Testing Evidence
+
+- `e2e/game-statistician-full-simulation.spec.ts` (1 test, 5 phases) — Full-game simulation in the shoes of a live courtside statistician verifying pre-game setup, in-game stat attribution, walk-on player additions, box score view, and game finalization.
+- Visual screenshot captures saved to evidence directory.
 
 ---
 

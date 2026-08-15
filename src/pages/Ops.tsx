@@ -20,8 +20,10 @@ import { canAccessOps, type AppRole } from '@/lib/auth/roles';
 import { Link } from 'react-router-dom';
 import { resizeImageToFit, inferTargetDimensions } from '@/lib/imageResize';
 import { fetchScores, submitScoreManual, parseScoreboardImage } from '@/lib/api/scores';
+import { fetchOverlay } from '@/lib/api/overlay';
 import type { ScoreCategory, LeagueId } from '@/types';
 import { LiveScoreboard } from '@/components/LiveScoreboard/LiveScoreboard';
+import { CourtsideQuickControls } from '@/components/LiveScoreboard/CourtsideQuickControls';
 
 type Tab = 'overview' | 'scores' | 'scoreboard' | 'teams' | 'players' | 'schedules' | 'events' | 'store' | 'potg' | 'roster' | 'media' | 'history';
 
@@ -896,6 +898,13 @@ const OpsPage = () => {
   });
   const scoresList = scoresQuery.data?.games ?? [];
 
+  const opsTabOverlayQuery = useQuery({
+    queryKey: ['overlay', scoreboardGameId],
+    queryFn: () => fetchOverlay(scoreboardGameId),
+    enabled: !!scoreboardGameId,
+    refetchInterval: 2500,
+  });
+
   const scoreManualMutation = useMutation({
     mutationFn: () => submitScoreManual({
       category: scoresForm.category,
@@ -1386,12 +1395,23 @@ const OpsPage = () => {
           </div>
 
           {scoreboardGameId ? (
-            <LiveScoreboard
-              gameId={scoreboardGameId}
-              homeTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.homeLabel ?? 'Home'}
-              awayTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.awayLabel ?? 'Away'}
-              className="shadow-2xl"
-            />
+            <div className="space-y-6">
+              <LiveScoreboard
+                gameId={scoreboardGameId}
+                homeTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.homeLabel ?? 'Home'}
+                awayTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.awayLabel ?? 'Away'}
+                className="shadow-2xl"
+              />
+              <CourtsideQuickControls
+                gameId={scoreboardGameId}
+                homeTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.homeLabel ?? 'Home'}
+                awayTeamName={scoresList.find((g) => g.id === scoreboardGameId)?.awayLabel ?? 'Away'}
+                overlayState={opsTabOverlayQuery.data?.overlay ?? null}
+                onMutationSuccess={() => {
+                  opsTabOverlayQuery.refetch();
+                }}
+              />
+            </div>
           ) : (
             <div className="rounded-xl border border-[#222222] bg-[#111111] p-8 text-center text-[#8A8A8A]">
               <Activity className="h-10 w-10 mx-auto mb-3 text-[#8A8A8A]" />

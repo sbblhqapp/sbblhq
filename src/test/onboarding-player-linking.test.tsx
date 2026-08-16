@@ -32,36 +32,36 @@ vi.mock('@/lib/api/auth', () => ({
 }));
 
 vi.mock('@/lib/api/client', () => ({
-  apiFetch: vi.fn(async (path: string) => {
+  apiFetch: vi.fn((path: string) => {
     if (path === '/api/public/leagues') {
-      return {
+      return Promise.resolve({
         ok: true,
         data: [{ id: 'l1', name: "Sunday's Best Basketball League", code: 'SBBL' }],
-      };
+      });
     }
     if (path.startsWith('/api/public/teams-by-league')) {
-      return {
+      return Promise.resolve({
         ok: true,
         data: [
           { id: 'team-1', name: 'Montanyosa', division_id: 'd1', division_name: 'Panalay Division' },
         ],
-      };
+      });
     }
     if (path.startsWith('/api/public/unclaimed-players')) {
-      return {
+      return Promise.resolve({
         ok: true,
         data: [
           { id: 'player-1', display_name: 'JR Courtside', jersey_number: 28 },
         ],
-      };
+      });
     }
     if (path === '/api/player/claim-or-join-team') {
-      return {
+      return Promise.resolve({
         ok: true,
         data: { player: { id: 'player-1' }, mode: 'claim' },
-      };
+      });
     }
-    return { ok: true };
+    return Promise.resolve({ ok: true });
   }),
 }));
 
@@ -104,11 +104,13 @@ describe('OnboardingPage — Phase 3a & Phase 4', () => {
       target: { value: 'JR Founder' },
     });
 
-    // Verify team dropdown appears
-    const teamSelect = await screen.findByRole('combobox', { name: /Select Your Team/i });
+    // Verify team dropdown appears and option is rendered
+    const teamSelect = (await screen.findByRole('combobox', { name: /Select Your Team/i })) as HTMLSelectElement;
     expect(teamSelect).toBeInTheDocument();
+    await screen.findByRole('option', { name: 'Montanyosa' });
 
-    // Select team Montanyosa
+    // Select team Montanyosa with both value assignment and synthetic change event for jsdom compatibility
+    teamSelect.value = 'team-1';
     fireEvent.change(teamSelect, { target: { value: 'team-1' } });
 
     // Verify unclaimed player card appears via data-testid

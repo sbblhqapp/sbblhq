@@ -36,11 +36,50 @@ export const leagues: League[] = [
 ];
 
 export const teams: Team[] = [
-  // Existing SBBL teams (DO NOT REMOVE OR CHANGE IDs)
-  { id: 't1', name: 'Panalay Kings', leagueId: 'sbbl', division: 'Panalay A', record: { wins: 8, losses: 2 } },
-  { id: 't2', name: 'Solid North', leagueId: 'sbbl', division: 'Panalay A', record: { wins: 7, losses: 3 } },
-  { id: 't3', name: 'Gensan Warriors', leagueId: 'sbbl', division: 'Panalay A', record: { wins: 6, losses: 4 } },
-  { id: 't8', name: 'Rim Rattlers', leagueId: 'sbbl', division: 'Panalay B', record: { wins: 5, losses: 5 } },
+  // SBBL Season 12 Teams
+  // Division P10 (20 teams)
+  { id: 'sbbl-p10-1', name: 'Northstar P10', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-2', name: 'Riverside', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-3', name: 'Smesh', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-4', name: 'Rebelde Cutie', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-5', name: 'JS Elite', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-6', name: 'Kanto Terrors', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-7', name: 'Legendary Dream Giver', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-8', name: 'North York Valors', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-9', name: 'Northside', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-10', name: 'Forest Hill', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-11', name: 'Macao Imperial Tea', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-12', name: 'Brewers OG', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-13', name: 'Panday', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-14', name: 'Downtown', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-15', name: 'Lakehurst Boys', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-16', name: 'Strikers', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-17', name: 'Airside Ballers', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-18', name: 'Tita Hunters', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-19', name: 'SPG Workmates', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p10-20', name: '421 Bois', leagueId: 'sbbl', division: 'P10', record: { wins: 0, losses: 0 } },
+
+  // Division P9 (12 teams)
+  { id: 'sbbl-p9-1', name: 'Northstar P9', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-2', name: 'Rebelde Jrs.', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-3', name: 'GLS Titos', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-4', name: 'Rawstar', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-5', name: 'Slam Drunks', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-6', name: 'Almighty', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-7', name: 'PTB Jrs.', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-8', name: 'Young Bucks', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-9', name: 'Droas Jrs.', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-10', name: 'Brotherhood', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-11', name: 'SPG Jrs.', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p9-12', name: 'Kapwa', leagueId: 'sbbl', division: 'P9', record: { wins: 0, losses: 0 } },
+
+  // Division 35 Up (2 teams)
+  { id: 'sbbl-35-1', name: 'Sansuwi', leagueId: 'sbbl', division: '35 Up', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-35-2', name: 'Toronto Raps', leagueId: 'sbbl', division: '35 Up', record: { wins: 0, losses: 0 } },
+
+  // Division P7 (2 teams)
+  { id: 'sbbl-p7-1', name: 'Stingers', leagueId: 'sbbl', division: 'P7', record: { wins: 0, losses: 0 } },
+  { id: 'sbbl-p7-2', name: 'Team Romansa', leagueId: 'sbbl', division: 'P7', record: { wins: 0, losses: 0 } },
 
   // TGIF Basketball League
   { id: 't6', name: 'Solid North', leagueId: 'tgifbl', division: 'Group 1', record: { wins: 3, losses: 1 } },

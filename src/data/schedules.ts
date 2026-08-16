@@ -6,6 +6,7 @@ export type ScheduleGame = {
   home: string;
   away: string;
   court: string;
+  division?: string;
 };
 
 export type ScheduleDay = {
@@ -30,20 +31,42 @@ const TGIF_SEASON = getLeagueSeasonLabel('tgifbl');
  * Will be replaced by Supabase-backed API when schedule pipeline ships.
  */
 export const SCHEDULE_DATA: ScheduleDay[] = [
-  // ── SBBL ──────────────────────────────────────────────────────────────────
+  // ── SBBL Season 12 (Aug 16, 2026) ──────────────────────────────────────────
   {
     leagueId: 'sbbl',
     leagueCode: 'SBBL',
     season: SBBL_SEASON,
     week: 1,
-    date: '2026-04-02',
-    venue: 'Crawford School',
+    date: '2026-08-16',
+    venue: 'Crawford School Arena',
     address: '531 Finch Ave W',
     courts: [
       {
-        name: '1v1 Exhibition',
+        name: 'Court 1',
         games: [
-          { time: '6:30 PM', home: 'Fred', away: 'Karl', court: '1v1 Exhibition' },
+          { time: '9:00 AM', home: 'Northstar P10', away: 'Riverside', court: 'Court 1', division: 'P10' },
+          { time: '10:00 AM', home: 'Smesh', away: 'Rebelde Cutie', court: 'Court 1', division: 'P10' },
+          { time: '11:00 AM', home: 'Northstar P9', away: 'Rebelde Jrs.', court: 'Court 1', division: 'P9' },
+          { time: '12:00 PM', home: 'JS Elite', away: 'Kanto Terrors', court: 'Court 1', division: 'P10' },
+          { time: '1:00 PM', home: 'GLS Titos', away: 'Rawstar', court: 'Court 1', division: 'P9' },
+          { time: '2:00 PM', home: 'Sansuwi', away: 'Toronto Raps', court: 'Court 1', division: '35 Up' },
+          { time: '3:00 PM', home: 'Legendary Dream Giver', away: 'North York Valors', court: 'Court 1', division: 'P10' },
+          { time: '4:00 PM', home: 'Slam Drunks', away: 'Almighty', court: 'Court 1', division: 'P9' },
+          { time: '5:00 PM', home: 'Northside', away: 'Forest Hill', court: 'Court 1', division: 'P10' },
+          { time: '6:00 PM', home: 'PTB Jrs.', away: 'Young Bucks', court: 'Court 1', division: 'P9' },
+          { time: '7:00 PM', home: 'Macao Imperial Tea', away: 'Brewers OG', court: 'Court 1', division: 'P10' },
+        ],
+      },
+      {
+        name: 'Court 2',
+        games: [
+          { time: '12:00 PM', home: 'Droas Jrs.', away: 'Brotherhood', court: 'Court 2', division: 'P9' },
+          { time: '1:00 PM', home: 'Panday', away: 'Downtown', court: 'Court 2', division: 'P10' },
+          { time: '2:00 PM', home: 'Lakehurst Boys', away: 'Strikers', court: 'Court 2', division: 'P10' },
+          { time: '3:00 PM', home: 'Airside Ballers', away: 'Tita Hunters', court: 'Court 2', division: 'P10' },
+          { time: '4:00 PM', home: 'SPG Workmates', away: '421 Bois', court: 'Court 2', division: 'P10' },
+          { time: '5:00 PM', home: 'SPG Jrs.', away: 'Kapwa', court: 'Court 2', division: 'P9' },
+          { time: '6:00 PM', home: 'Stingers', away: 'Team Romansa', court: 'Court 2', division: 'P7' },
         ],
       },
     ],

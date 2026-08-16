@@ -72,13 +72,13 @@ describe('canonical league model', () => {
   });
 
   it('tracks global season numbers by league', () => {
-    expect(LEAGUE_SEASON_NUMBERS.sbbl).toBe(11);
+    expect(LEAGUE_SEASON_NUMBERS.sbbl).toBe(12);
     expect(LEAGUE_SEASON_NUMBERS.wbl).toBe(3);
     expect(LEAGUE_SEASON_NUMBERS.tgifbl).toBe(1);
   });
 
   it('builds season labels from the global season map', () => {
-    expect(getLeagueSeasonLabel('sbbl')).toBe('Season 11');
+    expect(getLeagueSeasonLabel('sbbl')).toBe('Season 12');
     expect(getLeagueSeasonLabel('wbl')).toBe('Season 3');
     expect(getLeagueSeasonLabel('tgifbl')).toBe('Season 1');
   });

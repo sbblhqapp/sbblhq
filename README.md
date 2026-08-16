@@ -12,6 +12,7 @@ Three-league basketball super app by APEX Business Systems Ltd., Edmonton, Alber
 ## Stack
 
 - **Frontend:** Vite + React + TypeScript (strict mode enabled; see tsconfig.app.json)
+- **Live Scoring & Tabulation:** 1-Click Game Launch, `<LiveScoreboard />`, `<CourtsideQuickControls />`, `<PlayerStatsTracker />`, real-time OBS broadcast scorebug (`/overlay/:gameId`), and live projected standings preview (`public.fn_live_standings_preview`)
 - **Performance & Web Vitals:** Cumulative Layout Shift (CLS) zero-shift target (<0.01), layout-reserved skeleton containers
 - **Styling:** Tailwind CSS (dark-first, `#C9A84C` gold accent, mobile-first responsive architecture)
 - **Database:** Supabase (PostgreSQL + Realtime + Auth + Storage)

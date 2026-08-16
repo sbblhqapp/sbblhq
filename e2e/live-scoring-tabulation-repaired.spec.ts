@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect } from '@playwright/test';
 
 test.describe('Live Tabulation & Courtside Scoring Repaired E2E', () => {
@@ -6,7 +7,7 @@ test.describe('Live Tabulation & Courtside Scoring Repaired E2E', () => {
     let gameStatus = 'live';
     let homeScore = 0;
     let awayScore = 0;
-    let playersList: any[] = [];
+    const playersList: any[] = [];
 
     // Mock API routes for deterministic E2E flow
     await page.route(`**/api/public/games/${gameId}/player-stats`, async (route) => {

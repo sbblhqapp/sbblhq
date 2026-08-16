@@ -137,6 +137,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <button
               type="button"
+              aria-label="Away plus 1 point"
               disabled={isFinal && !isUnderCorrection}
               onClick={() => runAction(() => adjustScore(gameId, 'away', { delta: 1 }), `+1 ${awayTeamName}`)}
               className="flex-1 rounded-md bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#2A2A2A] py-2 text-xs font-bold text-[#F5F5F0] transition-colors disabled:opacity-40"
@@ -145,6 +146,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             </button>
             <button
               type="button"
+              aria-label="Away plus 2 points"
               disabled={isFinal && !isUnderCorrection}
               onClick={() => runAction(() => adjustScore(gameId, 'away', { delta: 2 }), `+2 ${awayTeamName}`)}
               className="flex-1 rounded-md bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#2A2A2A] py-2 text-xs font-bold text-[#C9A84C] transition-colors disabled:opacity-40"
@@ -153,6 +155,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             </button>
             <button
               type="button"
+              aria-label="Away plus 3 points"
               disabled={isFinal && !isUnderCorrection}
               onClick={() => runAction(() => adjustScore(gameId, 'away', { delta: 3 }), `+3 ${awayTeamName}`)}
               className="flex-1 rounded-md bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#2A2A2A] py-2 text-xs font-bold text-[#C9A84C] transition-colors disabled:opacity-40"
@@ -161,6 +164,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             </button>
             <button
               type="button"
+              aria-label="Away minus 1 point"
               disabled={isFinal && !isUnderCorrection}
               onClick={() => runAction(() => adjustScore(gameId, 'away', { delta: -1 }), `-1 ${awayTeamName}`)}
               className="rounded-md bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#2A2A2A] px-2.5 py-2 text-xs font-bold text-[#8A8A8A] hover:text-[#E63946] transition-colors disabled:opacity-40"
@@ -174,6 +178,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
+                aria-label="Away plus 1 foul"
                 disabled={isFinal && !isUnderCorrection}
                 onClick={() => runAction(() => adjustFoul(gameId, 'away', { delta: 1 }), `+1 Foul ${awayTeamName}`)}
                 className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-2 py-1 font-bold text-[#F4A261] disabled:opacity-40"
@@ -182,6 +187,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
               </button>
               <button
                 type="button"
+                aria-label="Away minus 1 foul"
                 disabled={isFinal && !isUnderCorrection}
                 onClick={() => runAction(() => adjustFoul(gameId, 'away', { delta: -1 }), `-1 Foul ${awayTeamName}`)}
                 className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-1.5 py-1 text-[#8A8A8A] hover:text-[#E63946] disabled:opacity-40"
@@ -213,6 +219,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <button
               type="button"
+              aria-label="Home plus 1 point"
               disabled={isFinal && !isUnderCorrection}
               onClick={() => runAction(() => adjustScore(gameId, 'home', { delta: 1 }), `+1 ${homeTeamName}`)}
               className="flex-1 rounded-md bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#2A2A2A] py-2 text-xs font-bold text-[#F5F5F0] transition-colors disabled:opacity-40"
@@ -221,6 +228,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             </button>
             <button
               type="button"
+              aria-label="Home plus 2 points"
               disabled={isFinal && !isUnderCorrection}
               onClick={() => runAction(() => adjustScore(gameId, 'home', { delta: 2 }), `+2 ${homeTeamName}`)}
               className="flex-1 rounded-md bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#2A2A2A] py-2 text-xs font-bold text-[#C9A84C] transition-colors disabled:opacity-40"
@@ -229,6 +237,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             </button>
             <button
               type="button"
+              aria-label="Home plus 3 points"
               disabled={isFinal && !isUnderCorrection}
               onClick={() => runAction(() => adjustScore(gameId, 'home', { delta: 3 }), `+3 ${homeTeamName}`)}
               className="flex-1 rounded-md bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#2A2A2A] py-2 text-xs font-bold text-[#C9A84C] transition-colors disabled:opacity-40"
@@ -237,6 +246,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             </button>
             <button
               type="button"
+              aria-label="Home minus 1 point"
               disabled={isFinal && !isUnderCorrection}
               onClick={() => runAction(() => adjustScore(gameId, 'home', { delta: -1 }), `-1 ${homeTeamName}`)}
               className="rounded-md bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#2A2A2A] px-2.5 py-2 text-xs font-bold text-[#8A8A8A] hover:text-[#E63946] transition-colors disabled:opacity-40"
@@ -250,6 +260,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
+                aria-label="Home plus 1 foul"
                 disabled={isFinal && !isUnderCorrection}
                 onClick={() => runAction(() => adjustFoul(gameId, 'home', { delta: 1 }), `+1 Foul ${homeTeamName}`)}
                 className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-2 py-1 font-bold text-[#F4A261] disabled:opacity-40"
@@ -258,6 +269,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
               </button>
               <button
                 type="button"
+                aria-label="Home minus 1 foul"
                 disabled={isFinal && !isUnderCorrection}
                 onClick={() => runAction(() => adjustFoul(gameId, 'home', { delta: -1 }), `-1 Foul ${homeTeamName}`)}
                 className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-1.5 py-1 text-[#8A8A8A] hover:text-[#E63946] disabled:opacity-40"
@@ -278,6 +290,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
 
           <button
             type="button"
+            aria-label={clockRunning ? 'Stop Clock' : 'Start Clock'}
             disabled={isFinal && !isUnderCorrection}
             onClick={() =>
               runAction(
@@ -292,7 +305,7 @@ export const CourtsideQuickControls: React.FC<CourtsideQuickControlsProps> = ({
             }`}
           >
             {clockRunning ? <Square className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-            {clockRunning ? 'Stop' : 'Start'}
+            {clockRunning ? 'STOP' : 'START'}
           </button>
 
           <div className="flex items-center gap-1">

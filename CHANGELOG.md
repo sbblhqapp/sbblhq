@@ -1,8 +1,20 @@
-<!-- Version: v1.9.3 | Date: 2026-08-15 | Status: Current -->
+<!-- Version: v1.9.4 | Date: 2026-08-16 | Status: Current -->
 # CHANGELOG
 
 All notable changes to SBBL HQ are documented in this file.
 Versioning follows [semantic versioning](https://semver.org) with UTC date stamps.
+
+---
+
+## [1.9.4] - 2026-08-16
+
+### Fixed — Courtside Ops Scoring Repair & Decoupled Roster Architecture (Contract v4.0.0)
+
+- **Decoupled Roster Player Model:** Migration `20260816000000_decouple_roster_players.sql` decouples `public.players` from `public.profiles` and `auth.users`, matching industry-standard sports architectures (GameChanger/iScore 24M+ games). Roster players are standalone entities; user accounts are optional.
+- **Zero Cross-Identity Merging:** Eliminated fuzzy cross-team display name matching. Adding a player always provisions an isolated player row on the target team, eliminating identity collisions and stats cross-contamination.
+- **State-Aware Correction & Reopen Lifecycle:** Supported `review_pending` status transition with `"Under Correction — not yet official"` warning banner. Game score and stats can be corrected without destructive data wipes; subsequent finalization recalculates official `mvw_standings`.
+- **Radix Dialog Modal Protection:** Replaced browser-native `window.confirm()` alerts with accessible Radix `<Dialog>` modals to prevent browser suppression risks during high-tempo live scoring.
+- **Streamlined Add-Player UX:** Single clear Add Walk-On Player form affordance with explicit Team selection on Box Score view, eliminating duplicate buttons.
 
 ---
 

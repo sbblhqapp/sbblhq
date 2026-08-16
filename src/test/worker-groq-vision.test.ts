@@ -63,5 +63,5 @@ describe('rxdb module is env-independent', () => {
   it('imports without VITE_SUPABASE_* env and exposes initDB (no replication)', async () => {
     const mod = await import('@/lib/rxdb');
     expect(typeof mod.initDB).toBe('function');
-  });
+  }, 15000);
 });

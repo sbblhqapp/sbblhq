@@ -27,6 +27,8 @@ const Media = lazy(() => import('./pages/Media'));
 const Scores = lazy(() => import('./pages/Scores'));
 const Teams = lazy(() => import('./pages/Teams'));
 const Login = lazy(() => import('./pages/Login'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Billing = lazy(() => import('./pages/Billing'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -87,7 +89,14 @@ function RegisterRedirect() {
   return <Navigate to={target} replace />;
 }
 
-const MARKETING_SUPPRESSED_ROUTES = new Set(['/login', '/register', '/onboarding', '/offline']);
+const MARKETING_SUPPRESSED_ROUTES = new Set([
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/onboarding',
+  '/offline',
+]);
 
 const DeferredShellEnhancements = () => {
   const [ready, setReady] = useState(false);
@@ -159,6 +168,8 @@ const AppShell = () => (
           <Route path="/operators" element={<OperatorLanding />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RegisterRedirect />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
           <Route path="/billing" element={<RequireAuth><Billing /></RequireAuth>} />
           <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />

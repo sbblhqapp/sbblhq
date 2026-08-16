@@ -6,8 +6,10 @@ export type StaticTeam = {
   leagueId: LeagueId;
   leagueCode: string;
   season: string;
+  division?: string;
 };
 
+const SBBL_SEASON = getLeagueSeasonLabel('sbbl');
 const TGIF_SEASON = getLeagueSeasonLabel('tgifbl');
 const WBL_SEASON = getLeagueSeasonLabel('wbl');
 
@@ -16,6 +18,51 @@ const WBL_SEASON = getLeagueSeasonLabel('wbl');
  * Will be replaced by Supabase teams table when data pipeline ships.
  */
 export const STATIC_TEAMS: StaticTeam[] = [
+  // ── SBBL (Sunday's Best Basketball League) — Season 12 ──
+  // Division P10 (20 teams)
+  { name: 'Northstar P10', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Riverside', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Smesh', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Rebelde Cutie', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'JS Elite', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Kanto Terrors', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Legendary Dream Giver', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'North York Valors', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Northside', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Forest Hill', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Macao Imperial Tea', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Brewers OG', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Panday', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Downtown', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Lakehurst Boys', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Strikers', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Airside Ballers', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'Tita Hunters', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: 'SPG Workmates', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+  { name: '421 Bois', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P10' },
+
+  // Division P9 (12 teams)
+  { name: 'Northstar P9', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'Rebelde Jrs.', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'GLS Titos', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'Rawstar', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'Slam Drunks', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'Almighty', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'PTB Jrs.', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'Young Bucks', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'Droas Jrs.', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'Brotherhood', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'SPG Jrs.', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+  { name: 'Kapwa', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P9' },
+
+  // Division 35 Up (2 teams)
+  { name: 'Sansuwi', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: '35 Up' },
+  { name: 'Toronto Raps', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: '35 Up' },
+
+  // Division P7 (2 teams)
+  { name: 'Stingers', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P7' },
+  { name: 'Team Romansa', leagueId: 'sbbl', leagueCode: 'SBBL', season: SBBL_SEASON, division: 'P7' },
+
   // ── TGIF Basketball League — Season 1 ──
   { name: 'Solid North', leagueId: 'tgifbl', leagueCode: 'TGIFBL', season: TGIF_SEASON },
   { name: 'OSY x LCL', leagueId: 'tgifbl', leagueCode: 'TGIFBL', season: TGIF_SEASON },

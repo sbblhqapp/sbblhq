@@ -70,10 +70,34 @@ export function getLeagueConfig(id: LeagueId): LeagueIdentity {
   return LEAGUE_REGISTRY.find((l) => l.id === id) ?? LEAGUE_REGISTRY.find((l) => l.id === 'sbbl')!;
 }
 
+const KNOWN_LEAGUE_UUIDS: Record<string, LeagueId> = {
+  '72ba2e09-302d-4bf4-8ebc-f895fb896b5f': 'sbbl',
+  'cb773203-03b4-4f75-8eff-a1b46ad7f9df': 'wbl',
+  '15dec6d4-ea7d-4d78-a0cf-2fb3f70e2903': 'tgifbl',
+};
+
+export function normalizeLeagueId(input: string | undefined | null): LeagueId {
+  if (!input) return 'sbbl';
+  const clean = input.trim().toLowerCase();
+  if (KNOWN_LEAGUE_UUIDS[clean]) return KNOWN_LEAGUE_UUIDS[clean];
+
+  const match = LEAGUE_REGISTRY.find(
+    (l) =>
+      l.id.toLowerCase() === clean ||
+      l.slug.toLowerCase() === clean ||
+      l.code.toLowerCase() === clean,
+  );
+  if (match) return match.id;
+
+  if (clean === 'tgif' || clean === 'tgifbl') return 'tgifbl';
+  if (clean === 'wbl') return 'wbl';
+  if (clean === 'sbbl') return 'sbbl';
+
+  return 'sbbl';
+}
+
 export function leagueIdFromCode(code: string): LeagueId {
-  const upper = code.toUpperCase();
-  const match = LEAGUE_REGISTRY.find((l) => l.code === upper);
-  return match?.id ?? 'sbbl';
+  return normalizeLeagueId(code);
 }
 
 export function leagueCodeFromId(id: LeagueId): string {
@@ -93,7 +117,7 @@ export function persistLeague(id: LeagueId): void {
 export function loadPersistedLeague(): LeagueId | null {
   try {
     const stored = localStorage.getItem(LEAGUE_STORAGE_KEY);
-    if (stored && LEAGUE_REGISTRY.some((l) => l.id === stored)) return stored as LeagueId;
+    if (stored) return normalizeLeagueId(stored);
   } catch { /* noop */ }
   return null;
 }

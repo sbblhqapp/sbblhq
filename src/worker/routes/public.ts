@@ -104,13 +104,22 @@ export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
 export async function handlePublicPotg({ admin }: HandlerCtx) {
   const { data, error } = await admin
     .from("media_publications")
-    .select("id,title,surface,league_id,status,render_payload,published_at,created_at")
+    .select("id,title,surface,league_id,status,render_payload,published_at,created_at,leagues(code)")
     .eq("surface", "potg")
     .eq("status", "published")
     .order("created_at", { ascending: false })
     .limit(20);
   if (error) throw new Error(error.message);
-  return new Response(JSON.stringify({ ok: true, data }), {
+
+  const formatted = (data ?? []).map((row: Record<string, unknown>) => {
+    const leagues = row.leagues as { code?: string } | null;
+    return {
+      ...row,
+      league_code: leagues?.code ?? null,
+    };
+  });
+
+  return new Response(JSON.stringify({ ok: true, data: formatted }), {
     headers: {
       "content-type": "application/json",
       "cache-control": "public, s-maxage=30, max-age=15",

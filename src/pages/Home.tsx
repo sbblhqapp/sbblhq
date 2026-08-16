@@ -1,5 +1,5 @@
 import { useApp } from '@/contexts/AppContext';
-import { getLeagueConfig, leagueCodeFromId, LEAGUE_REGISTRY } from '@/lib/leagues';
+import { getLeagueConfig, leagueCodeFromId, normalizeLeagueId } from '@/lib/leagues';
 import { fetchPublicHome, fetchPublicPotg, type PublicHomeData } from '@/lib/api/public';
 
 import { PotgCard } from '@/components/ui/PotgCard';
@@ -8,7 +8,7 @@ import { Play, Clock, Trophy, ChevronRight, Users, Calendar, BarChart3, Shopping
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { LeagueId, PlayerOfTheGame } from '@/types';
+import type { PlayerOfTheGame } from '@/types';
 import { mapPotgPublicationRows } from '@/lib/potg';
 
 type LoadState = 'loading' | 'loaded' | 'error';
@@ -19,14 +19,13 @@ const HomePage = () => {
 
   // Sync URL param → context
   useEffect(() => {
-    if (leagueParam && LEAGUE_REGISTRY.some(l => l.id === leagueParam)) {
-      setActiveLeague(leagueParam as LeagueId);
+    if (leagueParam) {
+      const normalized = normalizeLeagueId(leagueParam);
+      setActiveLeague(normalized);
     }
   }, [leagueParam, setActiveLeague]);
 
-  const resolvedLeague = (leagueParam && LEAGUE_REGISTRY.some(l => l.id === leagueParam))
-    ? leagueParam as LeagueId
-    : activeLeague;
+  const resolvedLeague = leagueParam ? normalizeLeagueId(leagueParam) : activeLeague;
   const league = getLeagueConfig(resolvedLeague);
   const [state, setState] = useState<LoadState>('loading');
   const [data, setData] = useState<PublicHomeData | null>(null);

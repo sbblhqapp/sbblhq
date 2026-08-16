@@ -1,4 +1,5 @@
-import type { LeagueId, PlayerOfTheGame } from '@/types';
+import type { PlayerOfTheGame } from '@/types';
+import { normalizeLeagueId } from '@/lib/leagues';
 
 /**
  * Shape of a row returned by GET /api/public/potg. Corresponds to the
@@ -14,18 +15,13 @@ type PotgPublicationRow = {
   title?: string | null;
   surface?: string | null;
   league_id?: string | null;
+  league_code?: string | null;
+  leagues?: { code?: string } | null;
   status?: string | null;
   render_payload?: Record<string, unknown> | null;
   published_at?: string | null;
   created_at?: string | null;
 };
-
-function toLeagueId(input: unknown): LeagueId {
-  const raw = String(input ?? '').toLowerCase();
-  if (raw === 'wbl') return 'wbl';
-  if (raw === 'tgifbl' || raw === 'tgif') return 'tgifbl';
-  return 'sbbl';
-}
 
 /**
  * Map `/api/public/potg` rows into the PlayerOfTheGame shape consumed by
@@ -41,7 +37,10 @@ export function mapPotgPublicationRows(
   for (const raw of rows) {
     const row = raw as PotgPublicationRow;
     const payload = (row.render_payload ?? {}) as Record<string, unknown>;
-    const leagueId = toLeagueId(payload.leagueId ?? row.league_id);
+    const code = row.league_code ?? row.leagues?.code ?? (payload.league_code as string | undefined) ?? (payload.leagueCode as string | undefined);
+    const rawLeague = (payload.leagueId as string | undefined) ?? row.league_id ?? code;
+    const leagueId = normalizeLeagueId(rawLeague || code);
+
     const playerName = String(payload.playerName ?? '').trim();
     if (!playerName) continue;
     out.push({

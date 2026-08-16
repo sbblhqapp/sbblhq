@@ -3,6 +3,7 @@ import { getLeagueConfig, leagueCodeFromId, normalizeLeagueId } from '@/lib/leag
 import { fetchPublicHome, fetchPublicPotg, type PublicHomeData } from '@/lib/api/public';
 
 import { PotgCard } from '@/components/ui/PotgCard';
+import { SeasonShowcaseBanner } from '@/components/season/SeasonShowcase';
 import { motion } from 'framer-motion';
 import { Play, Clock, Trophy, ChevronRight, Users, Calendar, BarChart3, ShoppingBag, Video } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
@@ -69,6 +70,11 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen">
+
+      {/* ── SEASON KEY ART ────────────────────────────────────────
+          Renders only for leagues with an active entry in
+          `src/lib/seasonShowcase.ts`; every other league is untouched. */}
+      <SeasonShowcaseBanner leagueId={resolvedLeague} />
 
       {/* ── LEAGUE LOGO HERO ──────────────────────────────────── */}
       <section className="relative overflow-hidden bg-[#0A0A0A]">

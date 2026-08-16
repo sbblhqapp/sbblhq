@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 const faqs = [
   {
     q: 'How do I register as a player?',
-    a: 'Sign in, then go to Billing & Payments and click "Pay & Renew" to activate your player registration tier ($6.99/month). Once active, your profile, stats, and leaderboard entries will be visible.',
+    a: 'Sign in, then complete Onboarding to join your team roster for free. To unlock full player profiles, career stats, leaderboards, and highlight downloads, activate the Player Premium Season Pass ($6.99 CAD/season) in Billing & Payments.',
   },
   {
     q: 'How does the livestream paywall work?',

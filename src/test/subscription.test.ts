@@ -11,7 +11,7 @@ import {
 } from '@/lib/auth/subscription';
 
 describe('player subscription access', () => {
-  it('player registration is $6.99 CAD/month', () => {
+  it('player registration is $6.99 CAD/season', () => {
     expect(PLAYER_REGISTRATION_PRICE_CAD).toBe(6.99);
   });
 

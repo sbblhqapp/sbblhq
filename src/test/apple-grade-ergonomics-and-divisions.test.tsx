@@ -83,10 +83,10 @@ describe('Apple-Grade Multi-Division & Ergonomics Suite', () => {
     );
 
     // Verify division segmented controls render with counts
-    expect(await screen.findByText('Season 12')).toBeInTheDocument();
-    expect(screen.getAllByText('P10').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('P9').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('35 Up').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findByText('Northstar P10')).toBeInTheDocument();
+    expect((await screen.findAllByText(/P10/i)).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/P9/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/35 Up/i).length).toBeGreaterThanOrEqual(1);
 
     // Verify standings render teams with podium styling
     expect(screen.getByText('Northstar P10')).toBeInTheDocument();

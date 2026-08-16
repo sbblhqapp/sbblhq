@@ -815,6 +815,7 @@ const LivePage = () => {
     enabled: !isSuperAdmin,
     staleTime: 15_000,
     refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
     retry: 1,
   });
   const broadcast = broadcastQuery.data ?? null;

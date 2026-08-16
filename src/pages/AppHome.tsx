@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Play, ShoppingBag, ChevronRight, Trophy, Zap, Shield } from 'lucide-react';
 import { LEAGUE_REGISTRY } from '@/lib/leagues';
 import { PotgCard } from '@/components/ui/PotgCard';
+import { SeasonFeatureCard } from '@/components/season/SeasonShowcase';
 import { useBag } from '@/contexts/BagContext';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -64,7 +65,8 @@ const AppHomePage = () => {
         <div className="absolute inset-0 [background:radial-gradient(ellipse_at_20%_65%,rgba(201,168,76,0.18)_0%,transparent_50%)]" />
         <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent" />
 
-        <div className="relative container py-20 md:py-28 lg:py-36">
+        <div className="relative container py-20 md:py-28 lg:py-36
+                        flex flex-col gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
           <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }} className="max-w-xl">
 
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary mb-4">The Premier Basketball Platform</p>
@@ -87,6 +89,10 @@ const AppHomePage = () => {
               </Link>
             </div>
           </motion.div>
+
+          {/* Season key art — secondary highlight, deliberately sized well below
+              the headline so the hero copy stays the focal point. */}
+          <SeasonFeatureCard className="self-start lg:self-auto" />
         </div>
       </section>
 

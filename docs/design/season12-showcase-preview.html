@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SBBL Season 12 — layout preview</title>
+<style>
+:root{
+  --background:0 0% 4%; --foreground:60 14% 95%; --card:0 0% 6.7%;
+  --primary:43 52% 54%; --muted-foreground:0 0% 54%; --border:0 0% 14%;
+  --sbbl:30 90% 55%;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:hsl(var(--background));color:hsl(var(--foreground));
+     font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+     -webkit-font-smoothing:antialiased}
+.container{width:100%;margin-inline:auto;padding-inline:1rem}
+@media(min-width:1440px){.container{max-width:1440px}}
+.sect{position:relative;overflow:hidden;background:#0A0A0A}
+.abs{position:absolute;inset:0}
+.gold-bg{background:linear-gradient(135deg,hsl(43 52% 54%),hsl(42 73% 66%));color:#0A0A0A}
+.btn{padding:.875rem 1.75rem;font-weight:700;font-size:.875rem;text-transform:uppercase;
+     letter-spacing:.05em;border-radius:.125rem;display:inline-flex;align-items:center;gap:.5rem;text-decoration:none}
+.btn-o{border:1px solid hsl(var(--border));color:hsl(var(--muted-foreground))}
+.eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.25em;color:hsl(var(--primary));margin-bottom:1rem}
+
+/* ── App home hero ─────────────────────────────── */
+#apphome .hero{min-height:560px}
+#apphome .heroimg{width:100%;height:100%;object-fit:contain;object-position:center}
+#apphome .sc1{background:rgba(0,0,0,.45)}
+#apphome .sc2{background:linear-gradient(to right,rgba(10,10,10,.85) 0%,rgba(10,10,10,.3) 55%,transparent 100%)}
+#apphome .sc3{background:radial-gradient(ellipse at 20% 65%,rgba(201,168,76,.18) 0%,transparent 50%)}
+#apphome .fade{position:absolute;left:0;right:0;bottom:0;height:10rem;background:linear-gradient(to top,hsl(var(--background)),transparent)}
+#apphome .row{position:relative;padding-block:5rem;display:flex;flex-direction:column;gap:3rem}
+@media(min-width:768px){#apphome .row{padding-block:7rem}}
+@media(min-width:1024px){#apphome .row{padding-block:9rem;flex-direction:row;align-items:center;justify-content:space-between;gap:4rem}}
+#apphome .copy{max-width:36rem}
+#apphome h1{font-weight:700;text-transform:uppercase;line-height:.9;letter-spacing:-.025em}
+#apphome h1 span{display:block;font-size:clamp(4rem,10vw,7.5rem)}
+#apphome h1 .g{color:hsl(var(--primary))}
+#apphome p.lede{color:hsl(var(--muted-foreground));font-size:1.125rem;max-width:24rem;margin-top:1.5rem;line-height:1.6;font-weight:500}
+#apphome .cta{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}
+
+/* ── Season feature card (portrait, secondary) ── */
+.featcard{flex-shrink:0;align-self:flex-start}
+@media(min-width:1024px){.featcard{align-self:auto}}
+.featcard a{position:relative;display:block;width:150px;overflow:hidden;border-radius:.125rem;
+  border:1px solid hsl(var(--primary)/.30);
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.85),0 0 28px -14px rgba(201,168,76,.45)}
+@media(min-width:640px){.featcard a{width:176px}}
+@media(min-width:1024px){.featcard a{width:208px}}
+@media(min-width:1280px){.featcard a{width:232px}}
+.featcard .ar{aspect-ratio:3/4}
+.featcard img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ── Season showcase banner (league page) ─────── */
+.showcase{position:relative;background:#0A0A0A}
+.showcase .wrap{padding-top:1.5rem}
+@media(min-width:768px){.showcase .wrap{padding-top:2rem}}
+.showcase .frame{position:relative;overflow:hidden;border-radius:.125rem;
+  border:1px solid hsl(var(--primary)/.25);aspect-ratio:1/1;
+  box-shadow:0 0 40px -12px rgba(201,168,76,.28)}
+@media(min-width:768px){.showcase .frame{aspect-ratio:12/5}}
+.showcase img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.showcase .bleed{position:absolute;left:0;right:0;bottom:0;height:4rem;background:linear-gradient(to top,#0A0A0A,transparent);pointer-events:none}
+
+/* ── League logo hero ─────────────────────────── */
+#league .glow{background:radial-gradient(ellipse at 50% 60%,hsl(var(--sbbl)/.18) 0%,transparent 60%)}
+#league .grid{opacity:.03;background-image:linear-gradient(rgba(255,255,255,.4) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.4) 1px,transparent 1px);background-size:48px 48px}
+#league .row{position:relative;padding-block:2.5rem;display:flex;flex-direction:column;align-items:center;gap:2.5rem}
+@media(min-width:768px){#league .row{padding-block:3.5rem}}
+@media(min-width:1024px){#league .row{flex-direction:row;align-items:flex-start;gap:3.5rem}}
+#league .col{display:flex;flex-direction:column;align-items:center;text-align:center;flex:1}
+#league .logo{width:10rem;height:10rem;object-fit:contain;margin-bottom:1.5rem;filter:drop-shadow(0 0 48px hsl(43 52% 54%/.35))}
+@media(min-width:1024px){#league .logo{width:16rem;height:16rem}}
+#league h1{text-transform:uppercase;line-height:1}
+#league h1 .n{display:block;font-size:clamp(2.5rem,7vw,5rem);font-weight:700;letter-spacing:-.025em}
+#league h1 .s{display:block;font-size:clamp(1rem,2.5vw,1.75rem);font-weight:700;letter-spacing:.05em;color:hsl(var(--primary));margin-top:.25rem}
+#league .sub{color:hsl(var(--muted-foreground));font-size:1rem;max-width:24rem;margin-top:.75rem}
+#league .cta{display:flex;gap:.75rem;margin-top:1.5rem}
+#league aside{background:hsl(var(--card)/.9);border:1px solid hsl(var(--primary)/.2);border-radius:.125rem;
+  padding:1.25rem;width:100%;flex-shrink:0;box-shadow:0 0 20px rgba(201,168,76,.08)}
+@media(min-width:1024px){#league aside{width:320px}}
+#league aside .t{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:hsl(var(--primary));margin-bottom:.75rem}
+#league .metrics{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+#league .m{border:1px solid hsl(var(--border));border-radius:.125rem;padding:.6rem .7rem}
+#league .m b{display:block;font-size:1.25rem;font-weight:700}
+#league .m i{font-size:9px;font-style:normal;text-transform:uppercase;letter-spacing:.12em;color:hsl(var(--muted-foreground))}
+.pagelabel{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:hsl(var(--primary));
+  padding:.55rem 1rem;background:#120c07;border-bottom:1px solid hsl(var(--border))}
+</style></head>
+<body>
+
+<div class="pagelabel">/ &nbsp;—&nbsp; SBBL-HQ main landing (season card = secondary highlight, right of hero)</div>
+<section id="apphome">
+  <div class="sect hero">
+    <img class="abs heroimg" src="/assets/hero-desktop.png" alt="">
+    <div class="abs sc1"></div><div class="abs sc2"></div><div class="abs sc3"></div>
+    <div class="fade"></div>
+    <div class="container row">
+      <div class="copy">
+        <p class="eyebrow">The Premier Basketball Platform</p>
+        <h1><span>SBBL</span><span class="g">HQ</span></h1>
+        <p class="lede">Three leagues. Live games. Real-time stats. One platform built for the court.</p>
+        <div class="cta">
+          <a class="btn gold-bg" href="#">▶ Watch Live</a>
+          <a class="btn btn-o" href="#">Shop</a>
+        </div>
+      </div>
+      <div class="featcard">
+        <a href="#"><div class="ar"><img src="/assets/season/sbbl-s12-feature-portrait.jpg" alt="SBBL Season 12 — tip off August 16, 2026"></div></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="pagelabel">/league/sbbl &nbsp;—&nbsp; SBBL league page (season banner above the logo hero)</div>
+<section id="league">
+  <div class="showcase">
+    <div class="container wrap">
+      <div class="frame">
+        <picture>
+          <source media="(min-width:768px)" srcset="/assets/season/sbbl-s12-banner-desktop.jpg">
+          <img src="/assets/season/sbbl-s12-banner-mobile.jpg" alt="SBBL Season 12 — tip off August 16, 2026">
+        </picture>
+        <div class="bleed"></div>
+      </div>
+    </div>
+  </div>
+  <div class="sect">
+    <div class="abs glow"></div><div class="abs grid"></div>
+    <div class="container row">
+      <div class="col">
+        <img class="logo" src="/assets/leagues/sbbl.png" alt="SBBL league logo">
+        <h1><span class="n">SBBL</span><span class="s">Season 12</span></h1>
+        <p class="sub">Sunday's Best Basketball League</p>
+        <div class="cta"><a class="btn gold-bg" href="#">Teams &amp; Standings</a><a class="btn btn-o" href="#">Schedule</a></div>
+      </div>
+      <aside>
+        <p class="t">League Snapshot</p>
+        <div class="metrics">
+          <div class="m"><i>Teams</i><b>36</b></div><div class="m"><i>Rostered</i><b>—</b></div>
+          <div class="m"><i>Games</i><b>—</b></div><div class="m"><i>Live</i><b>—</b></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+</body></html>

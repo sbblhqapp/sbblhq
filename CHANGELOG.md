@@ -1,8 +1,21 @@
-<!-- Version: v1.9.4 | Date: 2026-08-16 | Status: Current -->
+<!-- Version: v1.9.5 | Date: 2026-08-16 | Status: Current -->
 # CHANGELOG
 
 All notable changes to SBBL HQ are documented in this file.
 Versioning follows [semantic versioning](https://semver.org) with UTC date stamps.
+
+---
+
+## [1.9.5] - 2026-08-16
+
+### Added — SBBL Season 12 Key Art Surfaces
+
+- **Season showcase registry (`src/lib/seasonShowcase.ts`):** Single source for season key art, keyed by `LeagueId` with an `active` flag. Retiring a season's art is a one-line data change; consumers render `null` when no active entry exists.
+- **`SeasonShowcaseBanner`:** Art-directed banner at the top of `/league/:leagueId`. 12:5 crop from `md` up, 1:1 below, WebP with JPEG fallback. Aspect ratio is reserved at both breakpoints, so the banner contributes zero CLS.
+- **`SeasonFeatureCard`:** Portrait Season 12 card beside the `/` hero headline as a secondary highlight (150–232px by breakpoint), linking to `/league/sbbl`. Carries `fetchPriority="low"` so it never competes with the hero background for LCP.
+- **Assets (`public/assets/season/`):** Season 12 key art derived from the official Season 12 poster — league mark, season, and tip-off date only, all promotional copy removed. WebP 173–215 KB per surface.
+- **Scope:** SBBL only. WBL and TGIF resolve to `null` and render nothing; no existing markup was modified beyond the two mount points.
+- **Tests:** `src/test/season-showcase.test.tsx` covers registry resolution, per-league gating, alt text, asset wiring, and LCP priority.
 
 ---
 

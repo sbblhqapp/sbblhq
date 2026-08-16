@@ -645,3 +645,11 @@ export async function ingestReplay(jobId: string) {
     }
   );
 }
+
+/** Delete a game and its live score data (super_admin / league_admin / scorekeeper) */
+export async function deleteGame(gameId: string) {
+  return apiFetch<{ ok: boolean; deletedGameId: string }>(`/api/ops/games/${encodeURIComponent(gameId)}`, {
+    method: 'DELETE',
+  });
+}
+

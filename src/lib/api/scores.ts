@@ -74,3 +74,11 @@ export async function parseScoreboardImage(imageBase64: string, mimeType: string
     body: JSON.stringify({ imageBase64, mimeType }),
   });
 }
+
+/** Delete a game and its live score data (super_admin / league_admin / scorekeeper) */
+export async function deleteGame(gameId: string) {
+  return apiFetch<{ ok: boolean; deletedGameId: string }>(`/api/ops/games/${encodeURIComponent(gameId)}`, {
+    method: 'DELETE',
+  });
+}
+

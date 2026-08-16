@@ -1,12 +1,25 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/hooks/use-auth';
 import { LEAGUE_REGISTRY, getLeagueConfig } from '@/lib/leagues';
 import { LeagueBadge } from '@/components/ui/LeagueBadge';
 import type { LeagueId, ScoreCategory, ScoreEntry } from '@/types';
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Trophy, Users, Star, Calendar } from 'lucide-react';
-import { fetchScores } from '@/lib/api/scores';
+import { Trophy, Users, Star, Calendar, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { fetchScores, deleteGame } from '@/lib/api/scores';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 // ── Category config ────────────────────────────────────────────────────────
 const CATEGORIES: Array<{ id: ScoreCategory | 'all'; label: string; icon: typeof Trophy }> = [
@@ -46,11 +59,87 @@ function winnerSide(entry: ScoreEntry): 'home' | 'away' | null {
   return null;
 }
 
+// ── Admin Delete Game Button ───────────────────────────────────────────────
+function DeleteGameButton({ entry }: { readonly entry: ScoreEntry }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteGame(entry.id),
+    onSuccess: async (res) => {
+      if (res.ok) {
+        toast.success(`Match "${entry.awayLabel} vs ${entry.homeLabel}" deleted.`);
+        setOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ['scores'] });
+        await queryClient.invalidateQueries({ queryKey: ['ops', 'scoreboard-games'] });
+        await queryClient.invalidateQueries({ queryKey: ['overlay'] });
+      } else {
+        toast.error('Failed to delete game');
+      }
+    },
+    onError: (err) => {
+      toast.error((err as Error).message || 'Failed to delete game');
+    },
+  });
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Delete game ${entry.awayLabel} vs ${entry.homeLabel}`}
+          className="inline-flex items-center justify-center p-1 text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+          title="Delete Match & Scores"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent className="bg-[#141414] border border-[#2A2A2A] text-[#F5F5F0]">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-base font-bold text-red-400 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+            Delete Match & Live Scores
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-xs text-[#8A8A8A] leading-relaxed">
+            Are you sure you want to permanently remove <span className="font-semibold text-[#F5F5F0]">{entry.awayLabel} vs {entry.homeLabel}</span>?
+            <br className="my-1" />
+            This action deletes the match record, scorebug clock state, and any recorded individual box scores.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="mt-4 gap-2">
+          <AlertDialogCancel className="bg-[#222] border-0 text-[#8A8A8A] hover:text-[#F5F5F0] hover:bg-[#2A2A2A] text-xs">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={deleteMutation.isPending}
+            onClick={(e) => {
+              e.preventDefault();
+              deleteMutation.mutate();
+            }}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+          >
+            {deleteMutation.isPending ? (
+              <span className="flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> Deleting...
+              </span>
+            ) : (
+              'Delete Game'
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 // ── Game card ──────────────────────────────────────────────────────────────
 function ScoreCard({ entry }: { readonly entry: ScoreEntry }) {
   const winner = winnerSide(entry);
   const hasScore = entry.homeScore != null && entry.awayScore != null;
   const leagueId = entry.leagueId;
+  const { isAdmin } = useApp();
+  const { roles } = useAuth();
+  const isScoreAdmin = isAdmin || roles.some((r) => ['super_admin', 'league_admin', 'scorekeeper', 'team_manager'].includes(r));
 
   return (
     <div className="panel p-0 overflow-hidden flex flex-col">
@@ -76,10 +165,13 @@ function ScoreCard({ entry }: { readonly entry: ScoreEntry }) {
             <span className="text-[10px] text-muted-foreground truncate">{entry.seasonName}</span>
           ) : null}
         </div>
-        <span className={`flex-shrink-0 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${statusColor(entry.status)}`}>
-          {statusLabel(entry.status)}
-          {entry.status === 'live' && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse align-middle" />}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`flex-shrink-0 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${statusColor(entry.status)}`}>
+            {statusLabel(entry.status)}
+            {entry.status === 'live' && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse align-middle" />}
+          </span>
+          {isScoreAdmin && <DeleteGameButton entry={entry} />}
+        </div>
       </div>
 
       {/* Score body */}

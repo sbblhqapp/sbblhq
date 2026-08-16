@@ -64,7 +64,7 @@ const LoginPage = () => {
     const normalizedDetails = `${oauthError ?? ''} ${oauthErrorDescription ?? ''}`.toLowerCase();
     if (normalizedDetails.includes('org_internal')) {
       setError(
-        'Google OAuth Error (org_internal): Google Cloud consent screen is set to Internal. Change User Type to External in Google Cloud Console and publish the app. In the meantime, please use Email and Password below.',
+        'Google sign-in is blocked: this OAuth app is set to Internal-only in Google Cloud. Switch OAuth consent to External and add your Google account as a test user, or publish the app.',
       );
       return;
     }
@@ -148,7 +148,7 @@ const LoginPage = () => {
       } else {
         await signUpWithPassword(email, password, captchaToken);
         setResendEmail(email);
-        setMessage('Account created! Check your inbox to confirm your email, then sign in.');
+        setMessage('Account created — check your inbox to confirm your email, then sign in.');
         setMode('signin');
         setPassword('');
       }
@@ -204,10 +204,10 @@ const LoginPage = () => {
               </p>
 
               <div className="mt-8 space-y-3.5">
-                <TrustBullet icon={<Zap className="w-4 h-4" />} title="Live Scoring & Broadcast" text="Real-time scoreboard, multi-camera streams, and instant box scores" />
-                <TrustBullet icon={<BarChart3 className="w-4 h-4" />} title="Career Analytics" text="Individual player stats, season leaderboards, and awards tracking" />
-                <TrustBullet icon={<Users className="w-4 h-4" />} title="Team & Roster Identity" text="Self-service player claiming, team rosters, and division standings" />
-                <TrustBullet icon={<Shield className="w-4 h-4" />} title="Official League Auth" text="1-Tap Google Sign-In or secure password authentication" />
+                <TrustBullet icon={<Zap className="w-4 h-4" />} text="Live scoring and real-time game updates" />
+                <TrustBullet icon={<BarChart3 className="w-4 h-4" />} text="Career stats, standings, and leaderboards" />
+                <TrustBullet icon={<Users className="w-4 h-4" />} text="Team and roster operations" />
+                <TrustBullet icon={<Shield className="w-4 h-4" />} text="Secure email & password — your account, your access" />
               </div>
             </div>
             <div className="mt-8 pt-6 border-t border-border/60">
@@ -235,9 +235,12 @@ const LoginPage = () => {
             </div>
 
             {/* Prominent Segmented Switcher */}
-            <div className="flex bg-secondary/80 p-1 rounded-sm border border-border mb-6">
+            <div role="tablist" aria-label="Authentication Mode" className="flex bg-secondary/80 p-1 rounded-sm border border-border mb-6">
               <button
                 type="button"
+                role="tab"
+                aria-selected={mode === 'signin'}
+                aria-label="Switch to Sign In"
                 onClick={() => switchMode('signin')}
                 className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition-all ${
                   mode === 'signin'
@@ -249,6 +252,9 @@ const LoginPage = () => {
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={mode === 'signup'}
+                aria-label="Switch to Create Account"
                 onClick={() => switchMode('signup')}
                 className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition-all ${
                   mode === 'signup'
@@ -263,12 +269,12 @@ const LoginPage = () => {
             {/* Header Titles */}
             <div className="mb-5">
               <h1 className="font-display text-2xl md:text-3xl font-bold uppercase tracking-tight">
-                {mode === 'signin' ? 'Welcome Back' : 'Join the League'}
+                {mode === 'signin' ? 'Sign In' : 'Create Account'}
               </h1>
               <p className="text-xs md:text-sm text-muted-foreground mt-1">
                 {mode === 'signin'
-                  ? 'Sign in to access your player stats, teams, and live streams.'
-                  : 'Create your free account to claim your roster spot and follow games.'}
+                  ? 'Enter your email and password to access your account.'
+                  : 'Create a free account to track your stats, follow teams, and watch live games.'}
               </p>
             </div>
 
@@ -295,13 +301,7 @@ const LoginPage = () => {
                       <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
                       <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
                     </svg>
-                    <span>
-                      {googleSubmitting
-                        ? 'Connecting to Google…'
-                        : mode === 'signup'
-                        ? 'Sign up with Google'
-                        : 'Sign in with Google'}
-                    </span>
+                    <span>{googleSubmitting ? 'Redirecting…' : 'Continue with Google'}</span>
                   </button>
 
                   <div className="flex items-center gap-3 my-3">
@@ -394,8 +394,8 @@ const LoginPage = () => {
                       ? 'Signing in…'
                       : 'Creating account…'
                     : mode === 'signin'
-                    ? 'Sign In to Account'
-                    : 'Create Free Account'}
+                    ? 'Sign In'
+                    : 'Create Account'}
                 </span>
                 {!submitting && <ArrowRight className="w-4 h-4" />}
               </button>
@@ -403,7 +403,7 @@ const LoginPage = () => {
 
             {location.state && (
               <p className="text-xs text-muted-foreground mt-3 text-center">
-                Sign in to continue to your requested page.
+                Sign in to continue to a protected page.
               </p>
             )}
 
@@ -416,7 +416,7 @@ const LoginPage = () => {
                 </div>
                 {resendEmail && (
                   <div className="pt-2 border-t border-success/20 flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">Didn&apos;t receive it?</span>
+                    <span className="text-[11px] text-muted-foreground">Didn&apos;t get the email?</span>
                     <button
                       type="button"
                       onClick={async () => {
@@ -466,19 +466,19 @@ const LoginPage = () => {
             {/* Switch Mode Footer */}
             <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                {mode === 'signin' ? "Need an account?" : 'Already registered?'}
+                {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}
               </p>
               <button
                 type="button"
                 onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
-                className="text-xs font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider"
+                className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
               >
-                {mode === 'signin' ? 'Create Free Account' : 'Sign In'}
+                {mode === 'signin' ? 'Create one' : 'Sign in'}
               </button>
             </div>
 
             <p className="text-[10.5px] text-muted-foreground/70 mt-3 text-center">
-              By continuing, you agree to the SBBL Terms of Service and Privacy Policy.
+              By signing in, you agree to our terms of service. Your email is never shared.
             </p>
           </div>
         </div>
@@ -487,14 +487,11 @@ const LoginPage = () => {
   );
 };
 
-function TrustBullet({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function TrustBullet({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="p-2 bg-primary/10 rounded-sm text-primary flex-shrink-0 mt-0.5">{icon}</div>
-      <div>
-        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">{title}</h3>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{text}</p>
-      </div>
+    <div className="flex items-center gap-3">
+      <div className="p-2 bg-primary/10 rounded-sm text-primary flex-shrink-0">{icon}</div>
+      <span className="text-sm text-foreground/80">{text}</span>
     </div>
   );
 }

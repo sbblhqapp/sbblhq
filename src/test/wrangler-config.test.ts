@@ -54,6 +54,7 @@ type WranglerConfig = {
   name?: string;
   main?: string;
   assets?: { run_worker_first?: boolean | string[] };
+  vars?: Record<string, string>;
 };
 
 // ── wrangler.jsonc (dev / reference config) ───────────────────────────────────
@@ -63,6 +64,10 @@ describe('wrangler.jsonc configuration contract', () => {
 
   it('keeps the pinned worker name so custom domains + secrets stay bound', () => {
     expect(config.name).toBe('sbbl-hq-worker');
+  });
+
+  it('enables Google OAuth capability flag', () => {
+    expect(config.vars?.GOOGLE_OAUTH_ENABLED).toBe('true');
   });
 
   // Regression guard: a previous commit set run_worker_first to a path allowlist
@@ -91,6 +96,10 @@ describe('wrangler.deploy.jsonc configuration contract (CI production deploy)', 
 
   it('uses validation-contract-wrapper as entrypoint (rate limits + idempotency)', () => {
     expect(config.main).toBe('src/worker/validation-contract-wrapper.ts');
+  });
+
+  it('enables Google OAuth capability flag in deploy config', () => {
+    expect(config.vars?.GOOGLE_OAUTH_ENABLED).toBe('true');
   });
 
   it('runs the Worker first for ALL routes so security headers reach SPA HTML', () => {

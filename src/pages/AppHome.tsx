@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Play, ShoppingBag, ChevronRight, Trophy, Zap, Shield } from 'lucide-react';
+import { Play, ShoppingBag, ChevronRight, Trophy, Zap, Shield, FileText } from 'lucide-react';
 import { LEAGUE_REGISTRY } from '@/lib/leagues';
 import { PotgCard } from '@/components/ui/PotgCard';
 import { SeasonFeatureCard } from '@/components/season/SeasonShowcase';
@@ -24,6 +24,22 @@ const AppHomePage = () => {
   });
   const featuredProducts = useMemo<Product[]>(() => {
     const all = productsQuery.data?.data ?? [];
+    const customItems = all.filter((p) => p.is_custom);
+    if (customItems.length > 0) {
+      // Prioritize the custom team jerseys highlighted in the storefront
+      const prioritizedNames = [
+        'Montanyosa Custom Jersey',
+        'OY Phoenix Custom Jersey',
+        'Pinoy Northstars Custom Jersey',
+      ];
+      const selected = prioritizedNames
+        .map((name) => customItems.find((p) => p.name.toLowerCase() === name.toLowerCase()))
+        .filter((p): p is Product => Boolean(p));
+
+      if (selected.length >= 3) return selected.slice(0, 3);
+      const remaining = customItems.filter((p) => !selected.some((s) => s.id === p.id));
+      return [...selected, ...remaining].slice(0, 3);
+    }
     return all.filter((p) => p.badge === 'SALE' && p.price > 0).slice(0, 3);
   }, [productsQuery.data]);
 
@@ -203,18 +219,32 @@ const AppHomePage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {featuredProducts.map(p => (
               <div key={p.id} className="panel overflow-hidden group hover:border-primary/30 transition-colors">
-                <div className="relative aspect-square overflow-hidden bg-secondary">
-                  <img src={p.image} alt={p.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-primary text-primary-foreground text-[9px] font-bold uppercase tracking-wider rounded-sm">Sale</span>
+                <div className="relative aspect-square overflow-hidden bg-black/40">
+                  <img src={p.image} alt={p.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 p-2" loading="lazy" />
+                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-primary text-primary-foreground text-[9px] font-bold uppercase tracking-wider rounded-sm">
+                    {p.badge || (p.is_custom ? 'Custom' : 'Sale')}
+                  </span>
                 </div>
                 <div className="p-4">
-                  <p className="font-display font-bold text-sm">{p.name}</p>
-                  {p.colors && <p className="text-[10px] text-muted-foreground mt-0.5">{p.colors[0]}</p>}
+                  <p className="font-display font-bold text-sm truncate">{p.name}</p>
+                  {p.colors && p.colors.length > 0 ? (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{p.colors[0]}</p>
+                  ) : p.is_custom ? (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Custom Team Kit · Sublimation</p>
+                  ) : null}
                   <div className="flex items-center justify-between mt-3">
-                    <span className="text-sm font-bold text-primary">${p.price.toLocaleString()}</span>
-                    <button onClick={() => addToBag(p.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 gold-bg text-xs font-bold uppercase tracking-wider rounded-sm">
-                      <ShoppingBag className="w-3 h-3" /> Add
-                    </button>
+                    <span className="text-sm font-bold text-primary">
+                      {p.is_custom ? 'Quote Request' : (p.price > 0 ? `$${p.price.toLocaleString()}` : 'Reward Item')}
+                    </span>
+                    {p.is_custom ? (
+                      <Link to="/store" className="inline-flex items-center gap-1.5 px-3 py-1.5 gold-bg text-xs font-bold uppercase tracking-wider rounded-sm">
+                        <FileText className="w-3 h-3" /> Quote
+                      </Link>
+                    ) : (
+                      <button onClick={() => addToBag(p.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 gold-bg text-xs font-bold uppercase tracking-wider rounded-sm">
+                        <ShoppingBag className="w-3 h-3" /> Add
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

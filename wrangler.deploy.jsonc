@@ -34,6 +34,7 @@
     "SUPABASE_URL": "https://ezanilxygnpucwkwpsoc.supabase.co",
     // Supabase anon/public key — replace with value from Supabase dashboard.
     "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6YW5pbHh5Z25wdWN3a3dwc29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MjI5OTIsImV4cCI6MjA5MDE5ODk5Mn0.kLbwopHDqf33H9flwIbO5XqfPYdi0wMqjeVJC76-Ceo",
-    "SENTRY_DSN": ""
+    "SENTRY_DSN": "",
+    "GOOGLE_OAUTH_ENABLED": "true"
   }
 }

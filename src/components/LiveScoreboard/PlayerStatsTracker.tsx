@@ -9,9 +9,10 @@
  * - Automatic Foul-Out flags (5 fouls) & Team Bonus flags (5 team fouls)
  * - Mobile tactile haptic vibration confirmation
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import {
   Users,
   Table as TableIcon,
@@ -20,6 +21,7 @@ import {
   RotateCcw,
   Sparkles,
   Shirt,
+  Radio,
 } from 'lucide-react';
 import {
   fetchGamePlayerStats,
@@ -72,6 +74,44 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
     enabled: Boolean(gameId),
     refetchInterval: 5000,
   });
+
+  // Real-time multi-admin aggregation: subscribe to player_game_stats and overlay_game_state
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase || !gameId) return;
+
+    const channel = supabase
+      .channel(`rt-tabulation-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'player_game_stats',
+          filter: `game_id=eq.${gameId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['game-player-stats', gameId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'overlay_game_state',
+          filter: `game_id=eq.${gameId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['overlay', gameId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [gameId, queryClient]);
 
   const awayData = statsQuery.data?.away;
   const homeData = statsQuery.data?.home;
@@ -258,16 +298,20 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
       {/* ── Header & Team Selector Tabs ───────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3.5 mb-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Activity className="h-4 w-4 text-primary" />
             <h3 className="text-sm sm:text-base font-bold font-display text-foreground">
-              Courtside Player Box Score & Tabulation
+              Individual Player Stats & Box Score Tabulation
             </h3>
             {isBonusPenalty && (
               <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-500/15 text-rose-400 border border-rose-500/30 animate-pulse">
                 BONUS (PENALTY)
               </span>
             )}
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+              <Radio className="w-2.5 h-2.5 animate-pulse text-emerald-400" />
+              Multi-Admin Sync Active
+            </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             0ms instant scoring tabulation synced directly to live overlays and standings.

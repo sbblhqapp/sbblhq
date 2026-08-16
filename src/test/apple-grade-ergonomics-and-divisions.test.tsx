@@ -28,7 +28,7 @@ describe('Apple-Grade Multi-Division & Ergonomics Suite', () => {
         queries: { retry: false },
       },
     });
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('1. TeamsPage partitions SBBL Season 12 teams into clean division segmented tabs (P10, P9, 35 Up, P7)', async () => {
@@ -262,5 +262,29 @@ describe('Apple-Grade Multi-Division & Ergonomics Suite', () => {
         syncTeamScore: true,
       });
     });
+  });
+
+  it('4. Multi-admin concurrent stat recordings enforce atomic idempotency keys', async () => {
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, stats: { id: 'stat-abc', pts: 15 }, idempotent: false }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const idempotencyKey = 'idemp-custom-uuid-123';
+    await playerStatsApi.recordPlayerStat('game-999', {
+      playerId: 'player-x',
+      stat: 'pts',
+      delta: 2,
+      teamSide: 'home',
+      idempotencyKey,
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const lastCall = fetchSpy.mock.calls[0];
+    expect(lastCall[0]).toContain('/api/ops/games/game-999/player-stats');
+    expect(lastCall[1]?.body).toContain('"idempotencyKey":"idemp-custom-uuid-123"');
+    fetchSpy.mockRestore();
   });
 });

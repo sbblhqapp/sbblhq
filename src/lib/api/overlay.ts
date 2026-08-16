@@ -93,22 +93,38 @@ export async function updateGameStatus(gameId: string, status: string) {
 export async function adjustScore(
   gameId: string,
   side: 'home' | 'away',
-  opts: { delta?: number; set?: number; event?: string },
+  opts: { delta?: number; set?: number; event?: string; idempotencyKey?: string },
 ) {
+  const idempotencyKey =
+    opts.idempotencyKey ||
+    (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined);
+
   return apiFetch<{ ok: boolean; overlay: OverlayState }>(
     `/api/ops/overlay/${gameId}/score`,
-    { method: 'POST', body: JSON.stringify({ side, ...opts }) },
+    {
+      method: 'POST',
+      headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {},
+      body: JSON.stringify({ side, ...opts, idempotencyKey }),
+    },
   );
 }
 
 export async function adjustFoul(
   gameId: string,
   side: 'home' | 'away',
-  opts: { delta?: number; reset?: boolean },
+  opts: { delta?: number; reset?: boolean; idempotencyKey?: string },
 ) {
+  const idempotencyKey =
+    opts.idempotencyKey ||
+    (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined);
+
   return apiFetch<{ ok: boolean; overlay: OverlayState }>(
     `/api/ops/overlay/${gameId}/foul`,
-    { method: 'POST', body: JSON.stringify({ side, ...opts }) },
+    {
+      method: 'POST',
+      headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {},
+      body: JSON.stringify({ side, ...opts, idempotencyKey }),
+    },
   );
 }
 

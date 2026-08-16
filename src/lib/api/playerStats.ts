@@ -39,7 +39,7 @@ export async function fetchGamePlayerStats(gameId: string): Promise<GamePlayerSt
   return apiFetch<GamePlayerStatsResponse>(`/api/public/games/${gameId}/player-stats`);
 }
 
-/** Record or adjust a player stat courtside */
+/** Record or adjust a player stat courtside with atomic idempotency */
 export async function recordPlayerStat(
   gameId: string,
   payload: {
@@ -49,12 +49,21 @@ export async function recordPlayerStat(
     set?: number;
     teamSide?: 'home' | 'away';
     syncTeamScore?: boolean;
+    idempotencyKey?: string;
   }
 ) {
-  return apiFetch<{ ok: boolean; stats: unknown }>(`/api/ops/games/${gameId}/player-stats`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  const idempotencyKey =
+    payload.idempotencyKey ||
+    (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined);
+
+  return apiFetch<{ ok: boolean; stats: unknown; idempotent?: boolean }>(
+    `/api/ops/games/${gameId}/player-stats`,
+    {
+      method: 'POST',
+      headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {},
+      body: JSON.stringify({ ...payload, idempotencyKey }),
+    }
+  );
 }
 
 /** Quick-add an ad-hoc player to a team's game roster */

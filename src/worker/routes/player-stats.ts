@@ -217,12 +217,13 @@ export async function handleOpsRecordPlayerStat(ctx: HandlerCtx) {
     return json({ ok: false, error: "invalid_game_id" }, 400);
   }
 
-  const body = await ctx.req.json().catch(() => null) as {
+  const body = (await ctx.req.json().catch(() => null)) as {
     playerId: string;
     stat: "pts" | "reb" | "ast" | "stl" | "blk" | "fls" | "min";
     delta?: number;
     value?: number;
     teamSide?: "home" | "away";
+    idempotencyKey?: string;
   } | null;
 
   if (!body?.playerId || !body.stat) {
@@ -234,7 +235,54 @@ export async function handleOpsRecordPlayerStat(ctx: HandlerCtx) {
     return json({ ok: false, error: "invalid_stat_type" }, 400);
   }
 
-  // 1. Fetch current stat row
+  const idempotencyKey =
+    ctx.req.headers.get("x-idempotency-key") ||
+    body.idempotencyKey ||
+    null;
+
+  // Resolve team side
+  let side = body.teamSide;
+  if (!side) {
+    const { data: player } = await ctx.admin
+      .from("players")
+      .select("team_id")
+      .eq("id", body.playerId)
+      .maybeSingle();
+
+    const { data: game } = await ctx.admin
+      .from("games")
+      .select("home_team_id, away_team_id")
+      .eq("id", gameId)
+      .maybeSingle();
+
+    if (player && game) {
+      side = player.team_id === game.home_team_id ? "home" : "away";
+    }
+  }
+
+  const delta = body.delta !== undefined ? Number(body.delta) : 1;
+
+  // 1. Try atomic idempotent database RPC
+  if (body.value === undefined) {
+    const { data: rpcRes, error: rpcErr } = await ctx.admin.rpc(
+      "fn_atomic_record_player_stat",
+      {
+        p_game_id: gameId,
+        p_player_id: body.playerId,
+        p_stat: body.stat,
+        p_delta: delta,
+        p_team_side: side ?? "away",
+        p_idempotency_key: idempotencyKey,
+        p_actor_id: actorId,
+      },
+    );
+
+    if (!rpcErr && rpcRes && typeof rpcRes === "object" && "stats" in rpcRes) {
+      return json({ ok: true, stats: (rpcRes as { stats: unknown }).stats }, 200);
+    }
+  }
+
+  // 2. Fallback / direct value set path
   const { data: currentStats } = await ctx.admin
     .from("player_game_stats")
     .select("*")
@@ -243,10 +291,8 @@ export async function handleOpsRecordPlayerStat(ctx: HandlerCtx) {
     .maybeSingle();
 
   const currentVal = Number(currentStats?.[body.stat] ?? 0);
-  const delta = body.delta !== undefined ? Number(body.delta) : 1;
   const newVal = body.value !== undefined ? Math.max(0, Number(body.value)) : Math.max(0, currentVal + delta);
 
-  // 2. Upsert player_game_stats
   const updatePayload: Record<string, unknown> = {
     game_id: gameId,
     player_id: body.playerId,
@@ -264,49 +310,26 @@ export async function handleOpsRecordPlayerStat(ctx: HandlerCtx) {
     return json({ ok: false, error: upsertErr.message }, 500);
   }
 
-  // 3. If scoring stat (pts) changed, also update the overlay_game_state score
-  if (body.stat === "pts" && delta !== 0) {
-    // Determine player teamSide
-    let side = body.teamSide;
-    if (!side) {
-      const { data: player } = await ctx.admin
-        .from("players")
-        .select("team_id")
-        .eq("id", body.playerId)
-        .maybeSingle();
+  if (body.stat === "pts" && delta !== 0 && side) {
+    const { data: overlay } = await ctx.admin
+      .from("overlay_game_state")
+      .select("home_score, away_score")
+      .eq("game_id", gameId)
+      .maybeSingle();
 
-      const { data: game } = await ctx.admin
-        .from("games")
-        .select("home_team_id, away_team_id")
-        .eq("id", gameId)
-        .single();
+    if (overlay) {
+      const scoreCol = side === "home" ? "home_score" : "away_score";
+      const currentScore = Number(overlay[scoreCol] ?? 0);
+      const newScore = Math.max(0, currentScore + delta);
 
-      if (player && game) {
-        side = player.team_id === game.home_team_id ? "home" : "away";
-      }
-    }
-
-    if (side) {
-      const { data: overlay } = await ctx.admin
+      await ctx.admin
         .from("overlay_game_state")
-        .select("home_score, away_score")
-        .eq("game_id", gameId)
-        .maybeSingle();
-
-      if (overlay) {
-        const scoreCol = side === "home" ? "home_score" : "away_score";
-        const currentScore = Number(overlay[scoreCol] ?? 0);
-        const newScore = Math.max(0, currentScore + delta);
-
-        await ctx.admin
-          .from("overlay_game_state")
-          .update({ [scoreCol]: newScore, updated_at: new Date().toISOString() })
-          .eq("game_id", gameId);
-      }
+        .update({ [scoreCol]: newScore, updated_at: new Date().toISOString() })
+        .eq("game_id", gameId);
     }
   }
 
-  // 4. Record audit log
+  // Record audit log
   await ctx.admin.from("audit_logs").insert({
     actor_id: actorId,
     action: "record_player_stat",
@@ -319,7 +342,7 @@ export async function handleOpsRecordPlayerStat(ctx: HandlerCtx) {
       delta,
       newVal,
     },
-    idempotency_key: crypto.randomUUID(),
+    idempotency_key: idempotencyKey || crypto.randomUUID(),
   });
 
   return json({ ok: true, stats: updatedStats }, 200);

@@ -54,6 +54,9 @@
       "custom_domain": true
     }
   ],
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
   "vars": {
     // Cloud Supabase project URL.
     // Replace SBBL_SUPABASE_PROJECT_REF with your actual project ref from

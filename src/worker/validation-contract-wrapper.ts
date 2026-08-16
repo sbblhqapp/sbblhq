@@ -298,4 +298,12 @@ export default {
 
     return response;
   },
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    const workerObj = baseWorker as unknown as {
+      scheduled?: (event: ScheduledEvent, env: Env, ctx: ExecutionContext) => Promise<void>;
+    };
+    if (typeof workerObj.scheduled === 'function') {
+      return workerObj.scheduled(event, env, ctx);
+    }
+  },
 };

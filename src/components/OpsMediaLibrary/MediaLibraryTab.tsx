@@ -1,5 +1,5 @@
-import { ImageIcon, Save, Loader2, Upload } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { ImageIcon, Save, Loader2, Upload, Trash2 } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { MediaFilterBar } from './MediaFilterBar';
 import { MediaCard } from './MediaCard';
 import { MediaDragCard } from './MediaDragCard';
@@ -10,6 +10,7 @@ import { ArchiveModal } from './ArchiveModal';
 import { MediaMetadataSheet } from './MediaMetadataSheet';
 import { MediaPreviewSheet } from './MediaPreviewSheet';
 import { MediaStaleCleanupDialog } from './MediaStaleCleanupDialog';
+import { MediaArchivedPurgeModal } from './MediaArchivedPurgeModal';
 import { MediaUploadFlow } from './MediaUploadFlow';
 import { useOpsMediaLibrary } from '@/hooks/useOpsMediaLibrary';
 import { restoreMediaPublication } from '@/lib/api/ops';
@@ -20,6 +21,7 @@ export type MediaLibraryTabProps = {
 
 export function MediaLibraryTab({ enabled }: MediaLibraryTabProps) {
   const lib = useOpsMediaLibrary(enabled);
+  const [purgeModalOpen, setPurgeModalOpen] = useState(false);
 
   // ⚡ Bolt Performance Optimization: Memoize publication lookups to prevent O(N) array .find() on every render
   const previewPublication = useMemo(() =>
@@ -46,11 +48,10 @@ export function MediaLibraryTab({ enabled }: MediaLibraryTabProps) {
   return (
     <div className="panel p-4 max-w-6xl space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <ImageIcon className="w-5 h-5 text-primary" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start sm:items-center gap-2">
+          <ImageIcon className="w-5 h-5 text-primary shrink-0 mt-0.5 sm:mt-0" />
           <div>
-
             <p className="text-xs text-muted-foreground">
               Manage all media publications — Store, POTG, Events, and more. Public{' '}
               <code className="text-[10px] bg-secondary px-1 py-0.5 rounded">/media</code> shows
@@ -58,16 +59,26 @@ export function MediaLibraryTab({ enabled }: MediaLibraryTabProps) {
             </p>
           </div>
         </div>
-        {/* Upload button */}
-        <button
-          type="button"
-          onClick={() => lib.setUploadModeActive(true)}
-          disabled={lib.isFetching}
-          className="flex items-center gap-2 min-h-[44px] px-4 py-2 text-xs font-semibold bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <Upload className="w-4 h-4" />
-          Upload
-        </button>
+        {/* Actions button group */}
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setPurgeModalOpen(true)}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 min-h-[44px] px-3.5 py-2 text-xs font-semibold bg-[#1C1C1C] border border-[#2E2E2E] text-[#E63946] hover:bg-[#252525] rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            30-Day Purge
+          </button>
+          <button
+            type="button"
+            onClick={() => lib.setUploadModeActive(true)}
+            disabled={lib.isFetching}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 text-xs font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Upload
+          </button>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -301,6 +312,11 @@ export function MediaLibraryTab({ enabled }: MediaLibraryTabProps) {
           lib.setStaleCleanupOpen(false);
           lib.resetStaleCleanup();
         }}
+      />
+
+      <MediaArchivedPurgeModal
+        isOpen={purgeModalOpen}
+        onClose={() => setPurgeModalOpen(false)}
       />
 
       <MediaUploadFlow

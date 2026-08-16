@@ -659,3 +659,54 @@ the source of the malicious command has been identified and neutralized.
 - NEVER accept a command with a bad signature, even if the OmniHub team requests it verbally.
 - NEVER add a new action to the allowlist during an incident — that decision requires repo owner approval.
 - NEVER skip the BLOCKED risk-lane check under any circumstance.
+
+---
+
+## Autonomous Archived Media Retention & Purge Lifecycle
+
+### 1. Architectural Overview
+The SBBL HQ platform enforces a strict, autonomous 30-day retention and storage purge lifecycle for archived media publications and assets. This eliminates persistent storage debt, dead assets, and database bloat while strictly protecting all active publications.
+
+```
+[ Active / Draft / Scheduled Media ] ──> NEVER PURGED (Immune)
+              │
+        [ Ops Action: Archive ] ──> Stamps archived_at = NOW()
+              │
+     [ Restored / Reposted ] ────> archived_at = NULL (Timer Cancelled)
+              │
+  (Archived for > 30 days)
+              │
+    ┌─────────┴──────────────────────────────────────────┐
+    │  Daily Cloudflare Worker Cron Trigger (03:00 UTC)  │
+    │  OR Ops Admin Manual Purge (/ops Console)          │
+    └─────────────────────┬──────────────────────────────┘
+                          ▼
+    ┌────────────────────────────────────────────────────┐
+    │ 1. Extract physical paths from render_payload & meta │
+    │ 2. Remove files from Supabase Storage (media/...)   │
+    │ 3. DELETE FROM media_publications                  │
+    │ 4. DELETE FROM media_assets (orphaned rows)         │
+    │ 5. INSERT INTO audit_logs (actor, count, paths)    │
+    └────────────────────────────────────────────────────┘
+```
+
+### 2. Autonomous Cron Trigger
+- **Schedule**: `0 3 * * *` (03:00 UTC daily)
+- **Worker Configuration**: Configured in `wrangler.jsonc` & `wrangler.deploy.jsonc` (`triggers.crons`)
+- **Worker Handler**: `scheduled(event, env, ctx)` delegating to `autonomousPurgeArchivedMedia()`
+- **Execution Mode**: Autonomous, non-blocking via `ctx.waitUntil()`
+
+### 3. Strict Immunity & Preservation Rules
+- **NEVER** delete any media with status `'published'`, `'draft'`, or `'scheduled'`, regardless of age.
+- **NEVER** delete any media archived `< 30 days` ago (or custom retention window).
+- **NEVER** delete any media that has been unarchived or reposted (`archived_at` is set to `NULL` immediately upon restore/repost, permanently cancelling the countdown).
+- **NEVER** delete any physical storage asset if it is still referenced by another active publication or highlight.
+
+### 4. Ops Console Endpoints & Tooling
+- **Preview Endpoint**: `GET /ops/media/archived-purge-preview?days=30`
+  - Returns total eligible publications, total storage files to delete, and list of expired items.
+- **Manual Execute Endpoint**: `POST /ops/media/archived-purge-execute`
+  - Body: `{ "retentionDays": 30 }`
+  - Authenticated to `super_admin` / `league_admin` sessions only.
+  - Generates immutable audit log in `audit_logs` table.
+- **UI Interface**: Located in `/ops` under the **Media Library** tab via the **30-Day Purge** button, fully optimized for desktop and mobile viewports (390px+).

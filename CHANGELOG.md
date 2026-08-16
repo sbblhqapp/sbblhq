@@ -1,4 +1,4 @@
-<!-- Version: v1.9.3 | Date: 2026-08-15 | Status: Current -->
+<!-- Version: v1.9.4 | Date: 2026-08-16 | Status: Current -->
 # CHANGELOG
 
 All notable changes to SBBL HQ are documented in this file.
@@ -6,23 +6,31 @@ Versioning follows [semantic versioning](https://semver.org) with UTC date stamp
 
 ---
 
-## [1.9.3] - 2026-08-15
+## [1.9.4] - 2026-08-16
 
-### Added — Unified Live Scoring Tabulation, 1-Click Game Setup & Courtside Player Stats
+### Added — Autonomous 30-Day Archived Media Database & Storage Purge Engine
 
-- **⚡ 1-Click Game Setup & Courtside Launcher:** Launch live matches on `/ops` (Live Tabulation tab) directly from registered league rosters or custom names in < 2 seconds without navigating away or looking up UUIDs.
-- **Unified Courtside Controls (`<CourtsideQuickControls />`):** Mobile-optimized courtside touch controls for point increments (`+1, +2, +3`), clock management (`START / STOP, ±10s, SET`), fouls (`+1 FL`), possession toggle, and quarter advancement.
-- **1-Tap Player Stat Attribution (`<PlayerStatsTracker />`):** Full box score recording (`+1 FT, +2 FG, +3 3PT, REB, AST, STL, BLK, FLS`) with automatic team score and standings synchronization.
-- **Courtside Walk-on Management:** Rapid courtside roster addition (`+ Quick Add Player`) allowing walk-on players to be registered in under 3 seconds.
-- **Real-Time Standings Projection:** Database projection `public.fn_live_standings_preview` & public Worker endpoint `GET /api/public/live-standings/:leagueId/:seasonId` dynamically tabulating live in-game standings shifts.
-- **Fail-Closed Runtime Safety:** Safe optional chaining across references (`bootstrapQuery.data?.references?.leagues`) and null-safe OBS overlay rendering (`/overlay/:gameId`).
-
-### Added — Verification & Testing Evidence
-
-- `e2e/game-statistician-full-simulation.spec.ts` (1 test, 5 phases) — Full-game simulation in the shoes of a live courtside statistician verifying pre-game setup, in-game stat attribution, walk-on player additions, box score view, and game finalization.
-- Visual screenshot captures saved to evidence directory.
+- **Automated Cloudflare Worker Cron (`0 3 * * *` - 03:00 UTC daily)**:
+  - Added scheduled handler executing `autonomousPurgeArchivedMedia()` to autonomously identify and delete expired archived media publications and orphaned media assets.
+  - Removes physical files from Supabase Storage (`media`, `league-media`, `highlight-clips`, `store-products`) with zero manual operator overhead.
+- **Strict Content Immunity & Lifecycle Preservation**:
+  - `status = 'published'`, `'draft'`, `'scheduled'` are strictly immune and never purged regardless of age.
+  - Restoring or reposting archived media clears `archived_at` to `NULL`, permanently cancelling the deletion countdown.
+  - Partial index `idx_media_publications_archived_purge` and PostgreSQL trigger `trg_media_publications_archived_at` provide sub-millisecond query evaluation.
+- **Ops Console Controls & Mobile-First UX**:
+  - `GET /ops/media/archived-purge-preview` & `POST /ops/media/archived-purge-execute` endpoints for preview and on-demand maintenance.
+  - Responsive, touch-first `MediaArchivedPurgeModal` and header trigger in Ops Media Library supporting desktop and 390px+ mobile viewports with 44px+ touch targets and real-time deletion feedback.
+- **Comprehensive Audit Trail**:
+  - Every autonomous and manual purge run is immutably recorded in `audit_logs` (`action = 'autonomous_archived_media_purge'`).
 
 ---
+
+## [1.9.3] - 2026-08-15
+
+### Added — Unified Courtside Game Tabulation & Live Scoring Engine
+
+- Real-time 1-tap scoring, courtside walk-on additions, synchronized broadcast overlays, and historical tabulation.
+
 
 ## [1.9.2] - 2026-08-09
 

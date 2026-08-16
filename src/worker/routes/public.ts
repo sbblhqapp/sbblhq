@@ -32,11 +32,7 @@ export async function handlePublicConfig({ env }: HandlerCtx) {
 export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
   const url = new URL(req.url);
   // CLAUDE.md rule 10: the frontend sends a LEAGUE_REGISTRY slug ('sbbl',
-  // 'wbl', 'tgifbl'), never a raw league_id UUID. Passing that slug straight
-  // into .eq('league_id', ...) throws Postgres 22P02 (this exact endpoint,
-  // for all three leagues, was broken in production 2026-08-09 until this
-  // fix — the public Schedules page showed "Unable to load schedules" for
-  // every league). Must resolve through resolveLeagueIdFilter.
+  // 'wbl', 'tgifbl'), never a raw league_id UUID. Must resolve through resolveLeagueIdFilter.
   const leagueFilter = await resolveLeagueIdFilter(
     admin,
     url.searchParams.get("leagueId"),
@@ -44,13 +40,60 @@ export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
   if (leagueFilter === LEAGUE_NO_MATCH) {
     return json({ ok: true, data: [] });
   }
+
+  // 1. Query upcoming / scheduled games with rich team, division, venue, and court metadata
+  let gamesQuery = admin
+    .from("games")
+    .select(
+      "id,status,scheduled_at,league_id,home_team:teams!home_team_id(id,name,divisions(name)),away_team:teams!away_team_id(id,name,divisions(name)),venues(id,name,address),courts(id,name)",
+    )
+    .in("status", ["scheduled", "upcoming", "live"])
+    .order("scheduled_at", { ascending: true })
+    .limit(100);
+
+  if (leagueFilter) {
+    gamesQuery = gamesQuery.eq("league_id", leagueFilter);
+  }
+
+  const { data: gamesData, error: gamesErr } = await gamesQuery;
+
+  if (!gamesErr && gamesData && gamesData.length > 0) {
+    const formatted = gamesData.map((g: Record<string, unknown>) => {
+      const homeTeam = g.home_team as { name?: string; divisions?: { name?: string } } | null;
+      const awayTeam = g.away_team as { name?: string; divisions?: { name?: string } } | null;
+      const venues = g.venues as { name?: string; address?: string } | null;
+      const courts = g.courts as { name?: string } | null;
+
+      return {
+        id: g.id,
+        starts_at: g.scheduled_at,
+        league_id: g.league_id,
+        status: g.status,
+        home_team_name: homeTeam?.name ?? "TBA",
+        away_team_name: awayTeam?.name ?? "TBA",
+        division_name: homeTeam?.divisions?.name ?? awayTeam?.divisions?.name ?? null,
+        venue: venues?.name ?? "TBA",
+        address: venues?.address ?? "TBA",
+        court: courts?.name ?? "Main Court",
+      };
+    });
+
+    return new Response(JSON.stringify({ ok: true, data: formatted }), {
+      headers: {
+        "content-type": "application/json",
+        "cache-control": "public, s-maxage=60, max-age=30",
+      },
+    });
+  }
+
+  // Fallback to schedule_slots table if games are populated via slots
   let q = admin.from("schedule_slots").select("*").eq("status", "upcoming");
   if (leagueFilter) {
     q = q.eq("league_id", leagueFilter);
   }
   const { data, error } = await q.order("starts_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return new Response(JSON.stringify({ ok: true, data }), {
+  return new Response(JSON.stringify({ ok: true, data: data ?? [] }), {
     headers: {
       "content-type": "application/json",
       "cache-control": "public, s-maxage=60, max-age=30",

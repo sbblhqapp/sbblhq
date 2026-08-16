@@ -40,6 +40,7 @@ import {
   handleGetGamePlayerStats,
   handleOpsRecordPlayerStat,
   handleOpsQuickAddPlayer,
+  handleOpsDeleteGame,
 } from "./routes/player-stats";
 import {
   handlePublicPollsList,
@@ -7327,9 +7328,10 @@ const routes: Array<{ method: string; path: string; handler: Handler }> = [
   { method: "POST", path: "/api/ops/overlay/:gameId/status",     handler: handleOverlayStatus },
 
   // ── Game Player Stats & Roster ────────────────────────────────────────
-  { method: "GET",  path: "/api/public/games/:gameId/player-stats", handler: handleGetGamePlayerStats },
-  { method: "POST", path: "/api/ops/games/:gameId/player-stats",   handler: handleOpsRecordPlayerStat },
-  { method: "POST", path: "/api/ops/games/:gameId/quick-player",   handler: handleOpsQuickAddPlayer },
+  { method: "GET",    path: "/api/public/games/:gameId/player-stats", handler: handleGetGamePlayerStats },
+  { method: "POST",   path: "/api/ops/games/:gameId/player-stats",   handler: handleOpsRecordPlayerStat },
+  { method: "POST",   path: "/api/ops/games/:gameId/quick-player",   handler: handleOpsQuickAddPlayer },
+  { method: "DELETE", path: "/api/ops/games/:gameId",                handler: handleOpsDeleteGame },
 
   // ── Engagement (polls, predictions, trivia, gamification) ────────────
   { method: "GET",  path: "/api/public/engagement/polls",            handler: handlePublicPollsList },

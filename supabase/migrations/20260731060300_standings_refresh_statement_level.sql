@@ -1,4 +1,7 @@
 DROP TRIGGER IF EXISTS trg_games_refresh_standings ON public.games;
+DROP TRIGGER IF EXISTS trg_games_refresh_standings_stmt ON public.games;
+DROP TRIGGER IF EXISTS trg_games_refresh_standings_insert ON public.games;
+DROP TRIGGER IF EXISTS trg_games_refresh_standings_update ON public.games;
 
 -- FOR EACH STATEMENT: one refresh per bulk CSV import/finalize batch instead
 -- of one per row. Uses a transition table so the trigger only fires when at
@@ -17,8 +20,14 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_games_refresh_standings_stmt
-  AFTER INSERT OR UPDATE OF status ON public.games
+CREATE TRIGGER trg_games_refresh_standings_insert
+  AFTER INSERT ON public.games
+  REFERENCING NEW TABLE AS new_games
+  FOR EACH STATEMENT
+  EXECUTE FUNCTION public.fn_refresh_standings_trigger_stmt();
+
+CREATE TRIGGER trg_games_refresh_standings_update
+  AFTER UPDATE ON public.games
   REFERENCING NEW TABLE AS new_games
   FOR EACH STATEMENT
   EXECUTE FUNCTION public.fn_refresh_standings_trigger_stmt();

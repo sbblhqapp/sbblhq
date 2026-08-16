@@ -398,3 +398,74 @@ export async function handleOpsQuickAddPlayer(ctx: HandlerCtx) {
     200
   );
 }
+
+/**
+ * DELETE /api/ops/games/:gameId
+ *
+ * Removes a game, its associated overlay_game_state, player_game_stats, and game_rosters.
+ * If the game was in 'final' status, triggers a statement-level standings refresh.
+ */
+export async function handleOpsDeleteGame(ctx: HandlerCtx): Promise<Response> {
+  let adminId: string;
+  try {
+    adminId = await requireStatsAdmin(ctx);
+  } catch (err) {
+    const msg = (err as Error).message;
+    return json({ ok: false, error: msg }, msg === "unauthorized" ? 401 : 403);
+  }
+
+  const gameId = ctx.params?.gameId;
+  if (!gameId || !isUuid(gameId)) {
+    return json({ ok: false, error: "invalid_game_id" }, 400);
+  }
+
+  // 1. Fetch game details to audit-log and know status
+  const { data: game, error: fetchErr } = await ctx.admin
+    .from("games")
+    .select("id, status, league_id, season_id, participant1_label, participant2_label")
+    .eq("id", gameId)
+    .maybeSingle();
+
+  if (fetchErr) return json({ ok: false, error: fetchErr.message }, 500);
+  if (!game) return json({ ok: false, error: "game_not_found" }, 404);
+
+  // 2. Cascade delete child records
+  await ctx.admin.from("player_game_stats").delete().eq("game_id", gameId);
+  await ctx.admin.from("game_rosters").delete().eq("game_id", gameId);
+  await ctx.admin.from("overlay_game_state").delete().eq("game_id", gameId);
+
+  // 3. Delete the game row
+  const { error: delErr } = await ctx.admin.from("games").delete().eq("id", gameId);
+  if (delErr) return json({ ok: false, error: delErr.message }, 500);
+
+  // 4. Audit log
+  try {
+    await ctx.admin.rpc("log_admin_action", {
+      p_action: "GAME_DELETED",
+      p_target_type: "game",
+      p_target_id: gameId,
+      p_details: {
+        deletedBy: adminId,
+        priorStatus: game.status,
+        leagueId: game.league_id,
+        seasonId: game.season_id,
+        participant1Label: game.participant1_label,
+        participant2Label: game.participant2_label,
+      },
+    });
+  } catch {
+    // Non-fatal
+  }
+
+  // 5. If final, refresh standings
+  if (game.status === "final") {
+    try {
+      await ctx.admin.rpc("fn_refresh_standings_trigger_stmt");
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  return json({ ok: true, deletedGameId: gameId });
+}
+

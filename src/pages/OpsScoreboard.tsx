@@ -18,12 +18,26 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
+  Trash2,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { LiveScoreboard } from '@/components/LiveScoreboard/LiveScoreboard';
 import { CourtsideQuickControls } from '@/components/LiveScoreboard/CourtsideQuickControls';
 import { PlayerStatsTracker } from '@/components/LiveScoreboard/PlayerStatsTracker';
 import { fetchOverlay, type OverlayPayload } from '@/lib/api/overlay';
-import { fetchScores, submitScoreManual } from '@/lib/api/scores';
+import { fetchScores, submitScoreManual, deleteGame } from '@/lib/api/scores';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { LEAGUE_REGISTRY } from '@/lib/leagues';
 import type { LeagueId, ScoreCategory } from '@/types';
 
@@ -34,6 +48,7 @@ export default function OpsScoreboardPage() {
 
   const [selectedLeague, setSelectedLeague] = useState<LeagueId>('wbl');
   const [showCreateGame, setShowCreateGame] = useState<boolean>(!paramGameId);
+  const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
 
   // Quick Game Creation Form State
   const [newGameForm, setNewGameForm] = useState({
@@ -64,6 +79,28 @@ export default function OpsScoreboardPage() {
 
   const game = overlayQuery.data?.game;
   const overlay = overlayQuery.data?.overlay ?? null;
+
+  // Delete Game Mutation
+  const deleteGameMutation = useMutation({
+    mutationFn: async (gameIdToDelete: string) => {
+      return deleteGame(gameIdToDelete);
+    },
+    onSuccess: async (res) => {
+      if (res.ok) {
+        toast.success('Match and live scoreboard data deleted successfully.');
+        setShowDeleteDialog(false);
+        await queryClient.invalidateQueries({ queryKey: ['ops', 'scoreboard-games'] });
+        await queryClient.invalidateQueries({ queryKey: ['scores'] });
+        await queryClient.invalidateQueries({ queryKey: ['overlay'] });
+        navigate('/ops/scoreboard');
+      } else {
+        toast.error('Failed to delete game');
+      }
+    },
+    onError: (err) => {
+      toast.error((err as Error).message || 'Failed to delete game');
+    },
+  });
 
   // 1-Click Game Launch Mutation
   const createGameMutation = useMutation({
@@ -285,6 +322,55 @@ export default function OpsScoreboardPage() {
               <option value="">No games found for {selectedLeague.toUpperCase()}</option>
             )}
           </select>
+
+          {activeGameId && (
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md bg-red-950/40 border border-red-800/40 px-2.5 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-900/50 hover:text-red-200 transition-colors shrink-0"
+                  title="Delete Selected Match & Scores"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Match
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-[#141414] border border-[#2A2A2A] text-[#F5F5F0]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-base font-bold text-red-400 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                    Delete Match & Live Scores
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-xs text-[#8A8A8A] leading-relaxed">
+                    Are you sure you want to permanently delete this game?
+                    <br className="my-1" />
+                    This action will purge the game record, overlay scorebug state, and any recorded player statistics.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="mt-4 gap-2">
+                  <AlertDialogCancel className="bg-[#222] border-0 text-[#8A8A8A] hover:text-[#F5F5F0] hover:bg-[#2A2A2A] text-xs">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={deleteGameMutation.isPending}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (activeGameId) deleteGameMutation.mutate(activeGameId);
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+                  >
+                    {deleteGameMutation.isPending ? (
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Deleting...
+                      </span>
+                    ) : (
+                      'Confirm Delete'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 

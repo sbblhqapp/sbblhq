@@ -14,7 +14,7 @@ export type LeagueIdentity = {
 };
 
 export const LEAGUE_SEASON_NUMBERS: Record<LeagueId, number> = {
-  sbbl: 11,
+  sbbl: 12,
   wbl: 3,
   tgifbl: 1,
 };

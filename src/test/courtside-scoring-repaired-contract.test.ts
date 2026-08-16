@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
-import { handleOpsQuickAddPlayer, handleOpsRecordPlayerStat, handleGetGamePlayerStats } from '@/worker/routes/player-stats';
+import { handleOpsQuickAddPlayer, handleOpsRecordPlayerStat, handleGetGamePlayerStats, handleOpsDeleteGame } from '@/worker/routes/player-stats';
 import { handleOverlayStatus } from '@/worker/routes/overlay';
 import type { HandlerCtx } from '@/worker/shared';
 
@@ -38,6 +38,7 @@ describe('Courtside Scoring & Live Tabulation Contract v4.0.0', () => {
     const auditLogs: any[] = [];
 
     const admin: any = {
+      rpc: async () => ({ data: null, error: null }),
       from: (table: string) => ({
         select: (_cols?: string) => {
           const queryObj: any = {
@@ -89,6 +90,29 @@ describe('Courtside Scoring & Live Tabulation Contract v4.0.0', () => {
           };
           return queryObj;
         },
+        delete: () => ({
+          eq: (col: string, val: string) => {
+            if (table === 'games') {
+              const idx = gamesTable.findIndex((x) => x[col] === val);
+              if (idx >= 0) gamesTable.splice(idx, 1);
+            }
+            if (table === 'player_game_stats') {
+              const remaining = statsTable.filter((x) => x[col] !== val);
+              statsTable.length = 0;
+              statsTable.push(...remaining);
+            }
+            if (table === 'game_rosters') {
+              const remaining = rostersTable.filter((x) => x[col] !== val);
+              rostersTable.length = 0;
+              rostersTable.push(...remaining);
+            }
+            if (table === 'overlay_game_state') {
+              const idx = overlayTable.findIndex((x) => x[col] === val);
+              if (idx >= 0) overlayTable.splice(idx, 1);
+            }
+            return Promise.resolve({ error: null });
+          },
+        }),
         insert: (payload: any) => ({
           select: (_c?: string) => ({
             single: async () => {
@@ -160,42 +184,45 @@ describe('Courtside Scoring & Live Tabulation Contract v4.0.0', () => {
     params,
     admin,
     req: {
-      headers: new Headers({ 'x-sbbl-user-id-verified': 'admin-uuid-1' }),
+      headers: new Headers({
+        'x-sbbl-user-id-verified': 'admin-uuid-123',
+      }),
       json: async () => body,
     } as any,
-    env: {} as any,
-  });
+  } as HandlerCtx);
 
-  it('1. Two players with same name on different teams do NOT share a players row and stats do not cross-contaminate', async () => {
+  it('1. Cross-identity isolation: Quick-adding same name on home vs away creates 2 isolated player rows with distinct team_id', async () => {
     const state = mockAdminWithState();
 
-    // Add "Marcus Smart" to Away team
+    // 1. Add "Jordan Poole" on Away Team
     const ctxAway = createCtx(state.admin, { gameId }, {
-      name: 'Marcus Smart',
-      jerseyNumber: 36,
+      name: 'Jordan Poole',
+      jerseyNumber: 99,
       teamSide: 'away',
     });
     const resAway = await handleOpsQuickAddPlayer(ctxAway);
     const bodyAway = await resAway.json() as any;
 
     expect(bodyAway.ok).toBe(true);
+    expect(bodyAway.player.name).toBe('Jordan Poole');
     expect(bodyAway.player.teamId).toBe(teamAwayId);
     const awayPlayerId = bodyAway.player.id;
 
-    // Add another "Marcus Smart" to Home team
+    // 2. Add "Jordan Poole" on Home Team (identical name)
     const ctxHome = createCtx(state.admin, { gameId }, {
-      name: 'Marcus Smart',
-      jerseyNumber: 36,
+      name: 'Jordan Poole',
+      jerseyNumber: 3,
       teamSide: 'home',
     });
     const resHome = await handleOpsQuickAddPlayer(ctxHome);
     const bodyHome = await resHome.json() as any;
 
     expect(bodyHome.ok).toBe(true);
+    expect(bodyHome.player.name).toBe('Jordan Poole');
     expect(bodyHome.player.teamId).toBe(teamHomeId);
     const homePlayerId = bodyHome.player.id;
 
-    // Verify two isolated players exist in database
+    // Verify 2 distinct player records exist with correct team_id
     expect(awayPlayerId).not.toBe(homePlayerId);
     expect(state.playersTable.length).toBe(2);
     expect(state.playersTable[0].team_id).toBe(teamAwayId);
@@ -252,9 +279,29 @@ describe('Courtside Scoring & Live Tabulation Contract v4.0.0', () => {
     expect(state.overlayTable[0].period_label).toBe('FINAL');
   });
 
-  it('3. Confirms there is NO route in the worker that hard-deletes a game', async () => {
-    const workerSrc = await import('@/worker/index');
-    // Ensure worker does not export or register any handleOpsDeleteGame or delete game route
-    expect((workerSrc as any).handleOpsDeleteGame).toBeUndefined();
+  it('3. Admin can safely delete a match and cascade purge overlay & player stats', async () => {
+    const state = mockAdminWithState();
+
+    // Add a player and stats first
+    state.statsTable.push({ game_id: gameId, player_id: 'p1', pts: 10 });
+    state.rostersTable.push({ game_id: gameId, player_id: 'p1' });
+
+    expect(state.gamesTable.length).toBe(1);
+    expect(state.overlayTable.length).toBe(1);
+    expect(state.statsTable.length).toBe(1);
+
+    // Call handleOpsDeleteGame
+    const ctxDelete = createCtx(state.admin, { gameId }, {});
+    const res = await handleOpsDeleteGame(ctxDelete);
+    const body = (await res.json()) as any;
+
+    expect(body.ok).toBe(true);
+    expect(body.deletedGameId).toBe(gameId);
+
+    // Verify cascaded deletion
+    expect(state.gamesTable.length).toBe(0);
+    expect(state.overlayTable.length).toBe(0);
+    expect(state.statsTable.length).toBe(0);
+    expect(state.rostersTable.length).toBe(0);
   });
 });

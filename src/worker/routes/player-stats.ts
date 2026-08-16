@@ -58,6 +58,7 @@ interface RawPlayerWithProfile {
   jersey_number?: number | null;
   position?: string | null;
   team_id?: string | null;
+  display_name?: string | null;
   profile?: {
     full_name?: string | null;
     display_name?: string | null;
@@ -105,7 +106,7 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
       .select(`
         player_id, team_id, active,
         player:player_id (
-          id, jersey_number, position, team_id,
+          id, jersey_number, position, team_id, display_name,
           profile:profile_id ( full_name, display_name, avatar_url )
         )
       `)
@@ -114,7 +115,7 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
       ? ctx.admin
           .from("players")
           .select(`
-            id, jersey_number, position, team_id,
+            id, jersey_number, position, team_id, display_name,
             profile:profile_id ( full_name, display_name, avatar_url )
           `)
           .eq("team_id", homeTeamId)
@@ -123,7 +124,7 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
       ? ctx.admin
           .from("players")
           .select(`
-            id, jersey_number, position, team_id,
+            id, jersey_number, position, team_id, display_name,
             profile:profile_id ( full_name, display_name, avatar_url )
           `)
           .eq("team_id", awayTeamId)
@@ -145,7 +146,7 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
   ): PlayerStatEntry => {
     const stats = statsMap.get(p.id) ?? {};
     const profile = p.profile ?? {};
-    const name = profile.display_name || profile.full_name || `Player #${p.jersey_number ?? '?'}`;
+    const name = p.display_name || profile.display_name || profile.full_name || `Player #${p.jersey_number ?? '?'}`;
     return {
       playerId: p.id,
       playerName: name,
@@ -163,63 +164,31 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
     };
   };
 
-  const homePlayersMap = new Map<string, PlayerStatEntry>();
   const awayPlayersMap = new Map<string, PlayerStatEntry>();
+  const homePlayersMap = new Map<string, PlayerStatEntry>();
 
-  // Add default team players
-  for (const p of (homeTeamPlayers ?? []) as unknown as RawPlayerWithProfile[]) {
-    homePlayersMap.set(p.id, parsePlayer(p, homeTeamId));
-  }
-  for (const p of (awayTeamPlayers ?? []) as unknown as RawPlayerWithProfile[]) {
+  // Add players from team roster definitions
+  for (const p of (awayTeamPlayers ?? []) as RawPlayerWithProfile[]) {
     awayPlayersMap.set(p.id, parsePlayer(p, awayTeamId));
   }
+  for (const p of (homeTeamPlayers ?? []) as RawPlayerWithProfile[]) {
+    homePlayersMap.set(p.id, parsePlayer(p, homeTeamId));
+  }
 
-  // Overlay game rosters
+  // Add or override with players explicitly in game_rosters
   for (const r of (rosterRows ?? []) as unknown as RawRosterRow[]) {
     if (!r.player) continue;
-    const isHome = r.team_id === homeTeamId;
-    const entry = parsePlayer(r.player, r.team_id);
-    if (isHome) {
-      homePlayersMap.set(r.player_id, entry);
+    const parsed = parsePlayer(r.player, r.team_id);
+    if (r.team_id === awayTeamId || (!homeTeamId && !r.team_id)) {
+      awayPlayersMap.set(r.player_id, parsed);
     } else {
-      awayPlayersMap.set(r.player_id, entry);
+      homePlayersMap.set(r.player_id, parsed);
     }
   }
 
-  // Include any player with stats in this game even if not in roster
-  for (const s of (statsRows ?? []) as Array<Record<string, unknown>>) {
-    const pId = String(s.player_id);
-    if (!homePlayersMap.has(pId) && !awayPlayersMap.has(pId)) {
-      homePlayersMap.set(pId, {
-        playerId: pId,
-        playerName: `Player (${pId.slice(0, 6)})`,
-        jerseyNumber: null,
-        teamId: homeTeamId,
-        pts: Number(s.pts ?? 0),
-        reb: Number(s.reb ?? 0),
-        ast: Number(s.ast ?? 0),
-        stl: Number(s.stl ?? 0),
-        blk: Number(s.blk ?? 0),
-        fls: Number(s.fls ?? 0),
-        min: Number(s.min ?? 0),
-      });
-    }
-  }
-
-  const homeList = Array.from(homePlayersMap.values()).sort(
-    (a, b) => (a.jerseyNumber ?? 999) - (b.jerseyNumber ?? 999)
-  );
-  const awayList = Array.from(awayPlayersMap.values()).sort(
-    (a, b) => (a.jerseyNumber ?? 999) - (b.jerseyNumber ?? 999)
-  );
-
-  const homeTeamRaw = (game as Record<string, unknown>).home_team;
-  const homeTeamObj = Array.isArray(homeTeamRaw) ? (homeTeamRaw[0] as Record<string, unknown> | undefined) : (homeTeamRaw as Record<string, unknown> | null);
-  const homeTeamName = (homeTeamObj?.name as string | undefined) ?? (game as Record<string, unknown>).participant1_label as string | undefined ?? "Home";
-
-  const awayTeamRaw = (game as Record<string, unknown>).away_team;
-  const awayTeamObj = Array.isArray(awayTeamRaw) ? (awayTeamRaw[0] as Record<string, unknown> | undefined) : (awayTeamRaw as Record<string, unknown> | null);
-  const awayTeamName = (awayTeamObj?.name as string | undefined) ?? (game as Record<string, unknown>).participant2_label as string | undefined ?? "Away";
+  const rawGame = game as Record<string, unknown>;
+  const homeTeamName = (rawGame.home_team as { name?: string } | undefined)?.name || (rawGame.participant2_label as string | undefined) || "Home";
+  const awayTeamName = (rawGame.away_team as { name?: string } | undefined)?.name || (rawGame.participant1_label as string | undefined) || "Away";
 
   return json(
     {
@@ -228,12 +197,12 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
       home: {
         teamId: homeTeamId,
         teamName: homeTeamName,
-        players: homeList,
+        players: Array.from(homePlayersMap.values()),
       },
       away: {
         teamId: awayTeamId,
         teamName: awayTeamName,
-        players: awayList,
+        players: Array.from(awayPlayersMap.values()),
       },
     },
     200
@@ -242,61 +211,82 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
 
 // POST /api/ops/games/:gameId/player-stats
 export async function handleOpsRecordPlayerStat(ctx: HandlerCtx) {
-  await requireStatsAdmin(ctx);
+  const actorId = await requireStatsAdmin(ctx);
   const { gameId } = ctx.params;
   if (!gameId || !isUuid(gameId)) {
     return json({ ok: false, error: "invalid_game_id" }, 400);
   }
 
-  const body = (await ctx.req.json().catch(() => null)) as {
+  const body = await ctx.req.json().catch(() => null) as {
     playerId: string;
     stat: "pts" | "reb" | "ast" | "stl" | "blk" | "fls" | "min";
     delta?: number;
-    set?: number;
+    value?: number;
     teamSide?: "home" | "away";
-    syncTeamScore?: boolean;
   } | null;
 
   if (!body?.playerId || !body.stat) {
-    return json({ ok: false, error: "missing_player_or_stat" }, 400);
+    return json({ ok: false, error: "missing_fields" }, 400);
   }
 
-  const statField = body.stat;
-  const delta = body.delta ?? 1;
+  const validStats = ["pts", "reb", "ast", "stl", "blk", "fls", "min"];
+  if (!validStats.includes(body.stat)) {
+    return json({ ok: false, error: "invalid_stat_type" }, 400);
+  }
 
-  // 1. Fetch current player game stat row
-  const { data: existing } = await ctx.admin
+  // 1. Fetch current stat row
+  const { data: currentStats } = await ctx.admin
     .from("player_game_stats")
     .select("*")
     .eq("game_id", gameId)
     .eq("player_id", body.playerId)
     .maybeSingle();
 
-  const currentVal = existing ? Number(existing[statField] ?? 0) : 0;
-  const nextVal = body.set !== undefined ? Math.max(0, body.set) : Math.max(0, currentVal + delta);
+  const currentVal = Number(currentStats?.[body.stat] ?? 0);
+  const delta = body.delta !== undefined ? Number(body.delta) : 1;
+  const newVal = body.value !== undefined ? Math.max(0, Number(body.value)) : Math.max(0, currentVal + delta);
 
   // 2. Upsert player_game_stats
-  const payload: Record<string, unknown> = {
+  const updatePayload: Record<string, unknown> = {
     game_id: gameId,
     player_id: body.playerId,
-    [statField]: nextVal,
+    [body.stat]: newVal,
     updated_at: new Date().toISOString(),
   };
 
-  const { data: savedStat, error: statErr } = await ctx.admin
+  const { data: updatedStats, error: upsertErr } = await ctx.admin
     .from("player_game_stats")
-    .upsert(payload, { onConflict: "game_id,player_id" })
-    .select()
+    .upsert(updatePayload, { onConflict: "game_id,player_id" })
+    .select("*")
     .single();
 
-  if (statErr) {
-    return json({ ok: false, error: statErr.message }, 500);
+  if (upsertErr) {
+    return json({ ok: false, error: upsertErr.message }, 500);
   }
 
-  // 3. Sync Team Score / Foul if requested
-  if (body.teamSide && body.syncTeamScore !== false) {
-    if (statField === "pts" && delta !== 0) {
-      // Adjust overlay score
+  // 3. If scoring stat (pts) changed, also update the overlay_game_state score
+  if (body.stat === "pts" && delta !== 0) {
+    // Determine player teamSide
+    let side = body.teamSide;
+    if (!side) {
+      const { data: player } = await ctx.admin
+        .from("players")
+        .select("team_id")
+        .eq("id", body.playerId)
+        .maybeSingle();
+
+      const { data: game } = await ctx.admin
+        .from("games")
+        .select("home_team_id, away_team_id")
+        .eq("id", gameId)
+        .single();
+
+      if (player && game) {
+        side = player.team_id === game.home_team_id ? "home" : "away";
+      }
+    }
+
+    if (side) {
       const { data: overlay } = await ctx.admin
         .from("overlay_game_state")
         .select("home_score, away_score")
@@ -304,36 +294,35 @@ export async function handleOpsRecordPlayerStat(ctx: HandlerCtx) {
         .maybeSingle();
 
       if (overlay) {
-        const sideScoreField = body.teamSide === "home" ? "home_score" : "away_score";
-        const newScore = Math.max(0, (overlay[sideScoreField] ?? 0) + delta);
-        await ctx.admin
-          .from("overlay_game_state")
-          .update({ [sideScoreField]: newScore })
-          .eq("game_id", gameId);
-        await ctx.admin
-          .from("games")
-          .update({ [sideScoreField]: newScore })
-          .eq("id", gameId);
-      }
-    } else if (statField === "fls" && delta !== 0) {
-      const { data: overlay } = await ctx.admin
-        .from("overlay_game_state")
-        .select("home_fouls, away_fouls")
-        .eq("game_id", gameId)
-        .maybeSingle();
+        const scoreCol = side === "home" ? "home_score" : "away_score";
+        const currentScore = Number(overlay[scoreCol] ?? 0);
+        const newScore = Math.max(0, currentScore + delta);
 
-      if (overlay) {
-        const sideFoulField = body.teamSide === "home" ? "home_fouls" : "away_fouls";
-        const newFouls = Math.max(0, (overlay[sideFoulField] ?? 0) + delta);
         await ctx.admin
           .from("overlay_game_state")
-          .update({ [sideFoulField]: newFouls })
+          .update({ [scoreCol]: newScore, updated_at: new Date().toISOString() })
           .eq("game_id", gameId);
       }
     }
   }
 
-  return json({ ok: true, stats: savedStat }, 200);
+  // 4. Record audit log
+  await ctx.admin.from("audit_logs").insert({
+    actor_id: actorId,
+    action: "record_player_stat",
+    ref_type: "player_game_stats",
+    ref_id: `${gameId}:${body.playerId}`,
+    payload: {
+      gameId,
+      playerId: body.playerId,
+      stat: body.stat,
+      delta,
+      newVal,
+    },
+    idempotency_key: crypto.randomUUID(),
+  });
+
+  return json({ ok: true, stats: updatedStats }, 200);
 }
 
 // POST /api/ops/games/:gameId/quick-player
@@ -344,69 +333,64 @@ export async function handleOpsQuickAddPlayer(ctx: HandlerCtx) {
     return json({ ok: false, error: "invalid_game_id" }, 400);
   }
 
-  const body = (await ctx.req.json().catch(() => null)) as {
+  const body = await ctx.req.json().catch(() => null) as {
     name: string;
     jerseyNumber?: number | string;
     teamSide: "home" | "away";
   } | null;
 
-  if (!body?.name?.trim()) {
+  const trimmedName = body?.name?.trim() ?? "";
+  if (!trimmedName) {
     return json({ ok: false, error: "name_required" }, 400);
   }
 
   // 1. Get game to determine team_id and league_id
-  const { data: game } = await ctx.admin
+  const { data: game, error: gameErr } = await ctx.admin
     .from("games")
     .select("league_id, home_team_id, away_team_id")
     .eq("id", gameId)
     .single();
 
-  if (!game) return json({ ok: false, error: "game_not_found" }, 404);
+  if (gameErr || !game) return json({ ok: false, error: "game_not_found" }, 404);
 
-  const teamId = body.teamSide === "home" ? game.home_team_id : game.away_team_id;
+  const teamId = body?.teamSide === "home" ? game.home_team_id : game.away_team_id;
   const leagueId = game.league_id;
-  const jersey = body.jerseyNumber !== undefined && body.jerseyNumber !== "" ? Number(body.jerseyNumber) : null;
+  const jersey = body?.jerseyNumber !== undefined && body?.jerseyNumber !== "" ? Number(body.jerseyNumber) : null;
 
-  // 2. Create Profile & Player row
-  const { data: profile, error: profErr } = await ctx.admin
-    .from("profiles")
-    .insert({
-      full_name: body.name.trim(),
-      display_name: body.name.trim(),
-    })
-    .select("id")
-    .single();
-
-  if (profErr) return json({ ok: false, error: profErr.message }, 500);
-
+  // 2. Direct insert into public.players (no profiles row, zero fake auth IDs)
+  // Decoupled architecture matching GameChanger / iScore (24M+ games)
+  // Iron Law 12: Zero auto-merging by fuzzy name match. Every add creates an isolated player row.
   const { data: player, error: playerErr } = await ctx.admin
     .from("players")
     .insert({
-      user_id: profile.id,
-      profile_id: profile.id,
+      user_id: null,
+      profile_id: null,
+      display_name: trimmedName,
       team_id: teamId,
       league_id: leagueId,
       jersey_number: jersey,
     })
-    .select("id, jersey_number")
+    .select("id, jersey_number, display_name")
     .single();
 
   if (playerErr) return json({ ok: false, error: playerErr.message }, 500);
 
   // 3. Link to game_rosters
-  await ctx.admin.from("game_rosters").upsert({
+  const { error: rosterErr } = await ctx.admin.from("game_rosters").upsert({
     game_id: gameId,
     team_id: teamId,
     player_id: player.id,
     active: true,
   }, { onConflict: "game_id,player_id" });
 
+  if (rosterErr) return json({ ok: false, error: rosterErr.message }, 500);
+
   return json(
     {
       ok: true,
       player: {
         id: player.id,
-        name: body.name.trim(),
+        name: player.display_name || trimmedName,
         jerseyNumber: player.jersey_number,
         teamId,
       },

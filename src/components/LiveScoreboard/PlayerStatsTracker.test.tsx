@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PlayerStatsTracker } from './PlayerStatsTracker';
@@ -113,5 +113,41 @@ describe('PlayerStatsTracker Component', () => {
     expect(await screen.findByText(/Ballers Box Score/i)).toBeDefined();
     expect(screen.getByText(/Shooters Box Score/i)).toBeDefined();
     expect(screen.getAllByText('TOTALS')).toHaveLength(2);
+  });
+
+  it('allows quick adding walk-on player through single form affordance', async () => {
+    vi.mocked(playerStatsApi.fetchGamePlayerStats).mockResolvedValue({
+      ok: true,
+      gameId: '11111111-1111-1111-1111-111111111111',
+      away: { teamId: 'team-away-1', teamName: 'Ballers', players: [] },
+      home: { teamId: 'team-home-1', teamName: 'Shooters', players: [] },
+    });
+
+    vi.mocked(playerStatsApi.quickAddGamePlayer).mockResolvedValue({
+      ok: true,
+      player: { id: 'p-new', name: 'Marcus Smart', jerseyNumber: 36, teamId: 'team-away-1' },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PlayerStatsTracker gameId="11111111-1111-1111-1111-111111111111" />
+      </QueryClientProvider>
+    );
+
+    const triggerBtn = await screen.findByText(/\+ Add Walk-On Player/i);
+    fireEvent.click(triggerBtn);
+
+    const nameInput = screen.getByPlaceholderText(/Marcus Smart/i);
+    fireEvent.change(nameInput, { target: { value: 'Marcus Smart' } });
+
+    const submitBtn = screen.getByRole('button', { name: /^Add Player$/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(playerStatsApi.quickAddGamePlayer).toHaveBeenCalledWith(
+        '11111111-1111-1111-1111-111111111111',
+        expect.objectContaining({ name: 'Marcus Smart' })
+      );
+    });
   });
 });

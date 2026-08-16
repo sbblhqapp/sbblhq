@@ -1,31 +1,29 @@
 /**
  * PlayerStatsTracker Component
  *
- * Courtside player stat recording and live boxscore tabulation console.
- * Enables 1-tap stat recording for individual players with real-time sync
- * to team score, scoreboard pulse, and live projected standings.
+ * Real-time individual player box score and statistical tabulation component.
+ * Allows 1-tap live recording of points, rebounds, assists, steals, blocks, and fouls.
+ * Decoupled standalone player model (GameChanger / iScore 24M+ games architecture).
  */
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Users,
-  UserPlus,
-  Trophy,
-  Flame,
-  Shield,
-  Activity,
   Plus,
   Minus,
-  Table,
-  CheckCircle2,
+  Table as TableIcon,
+  Shield,
+  Activity,
+  UserPlus,
+  Sparkles,
 } from 'lucide-react';
 import {
   fetchGamePlayerStats,
   recordPlayerStat,
   quickAddGamePlayer,
   type GamePlayerStat,
-  type StatType,
+  type PlayerStatType,
 } from '@/lib/api/playerStats';
 
 export interface PlayerStatsTrackerProps {
@@ -44,26 +42,27 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerJersey, setNewPlayerJersey] = useState('');
+  const [newPlayerTeamSide, setNewPlayerTeamSide] = useState<'away' | 'home'>('away');
 
-  // Fetch live player game stats
+  // Query stats
   const statsQuery = useQuery({
     queryKey: ['game-player-stats', gameId],
     queryFn: () => fetchGamePlayerStats(gameId),
-    refetchInterval: 3000,
-    enabled: !!gameId,
+    enabled: Boolean(gameId),
+    refetchInterval: 5000,
   });
 
-  const homeData = statsQuery.data?.home;
   const awayData = statsQuery.data?.away;
+  const homeData = statsQuery.data?.home;
 
   // Stat Recording Mutation
-  const recordStatMutation = useMutation({
+  const statMutation = useMutation({
     mutationFn: async (vars: {
       playerId: string;
-      stat: StatType;
-      delta: number;
-      teamSide: 'home' | 'away';
       playerName: string;
+      stat: PlayerStatType;
+      delta: number;
+      teamSide?: 'home' | 'away';
     }) => {
       return recordPlayerStat(gameId, {
         playerId: vars.playerId,
@@ -91,7 +90,7 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
   const addPlayerMutation = useMutation({
     mutationFn: async () => {
       if (!newPlayerName.trim()) throw new Error('Player name is required');
-      const side = activeSide === 'boxscore' ? 'away' : activeSide;
+      const side = activeSide === 'boxscore' ? newPlayerTeamSide : activeSide;
       return quickAddGamePlayer(gameId, {
         name: newPlayerName.trim(),
         jerseyNumber: newPlayerJersey || undefined,
@@ -136,104 +135,122 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
       data-testid="player-stats-tracker"
       className={`rounded-xl border border-[#222222] bg-[#111111] p-4 sm:p-6 text-[#F5F5F0] font-['Space_Grotesk'] ${className}`}
     >
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      {/* ── Header & Team Selector Tabs ───────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#222222] pb-3 mb-4">
         <div>
           <h3 className="text-sm sm:text-base font-bold text-[#F5F5F0] flex items-center gap-2">
-            <Users className="h-4 w-4 text-[#C9A84C]" />
+            <Activity className="h-4 w-4 text-[#C9A84C]" />
             Individual Player Stats & Box Score
           </h3>
           <p className="text-[11px] text-[#8A8A8A]">
-            1-tap player stat attribution. Syncs directly with team score & standings.
+            1-tap tabulates to player profiles and real-time box scores.
           </p>
         </div>
 
-        {/* View Switcher Tabs */}
+        {/* Tab Controls */}
         <div className="flex items-center gap-1 bg-[#181818] p-1 rounded-lg border border-[#262626]">
           <button
             type="button"
-            onClick={() => setActiveSide('away')}
-            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+            onClick={() => {
+              setActiveSide('away');
+              setNewPlayerTeamSide('away');
+            }}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
               activeSide === 'away'
-                ? 'bg-[#C9A84C] text-[#0A0A0A] shadow-md'
+                ? 'bg-[#C9A84C] text-[#0A0A0A]'
                 : 'text-[#8A8A8A] hover:text-[#F5F5F0]'
             }`}
           >
-            {awayData?.teamName ?? 'Away'} ({awayTotals.pts} PTS)
+            {awayData?.teamName || 'Away'} ({awayTotals.pts} PTS)
           </button>
           <button
             type="button"
-            onClick={() => setActiveSide('home')}
-            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+            onClick={() => {
+              setActiveSide('home');
+              setNewPlayerTeamSide('home');
+            }}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
               activeSide === 'home'
-                ? 'bg-[#C9A84C] text-[#0A0A0A] shadow-md'
+                ? 'bg-[#C9A84C] text-[#0A0A0A]'
                 : 'text-[#8A8A8A] hover:text-[#F5F5F0]'
             }`}
           >
-            {homeData?.teamName ?? 'Home'} ({homeTotals.pts} PTS)
+            {homeData?.teamName || 'Home'} ({homeTotals.pts} PTS)
           </button>
           <button
             type="button"
             onClick={() => setActiveSide('boxscore')}
-            className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${
+            className={`flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-md transition-colors ${
               activeSide === 'boxscore'
-                ? 'bg-[#C9A84C] text-[#0A0A0A] shadow-md'
+                ? 'bg-[#C9A84C] text-[#0A0A0A]'
                 : 'text-[#8A8A8A] hover:text-[#F5F5F0]'
             }`}
           >
-            <Table className="h-3 w-3" />
+            <TableIcon className="h-3 w-3" />
             Box Score
           </button>
         </div>
       </div>
 
-      {/* ── Quick Add Player Bar ──────────────────────────────────────────────── */}
-      {activeSide !== 'boxscore' && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          {!showAddPlayer ? (
+      {/* ── Single Add Player Form Section ────────────────────────────────────── */}
+      <div className="mb-4">
+        {!showAddPlayer ? (
+          <button
+            type="button"
+            onClick={() => setShowAddPlayer(true)}
+            className="w-full py-2 border border-dashed border-[#333333] hover:border-[#C9A84C] rounded-lg text-xs font-bold text-[#8A8A8A] hover:text-[#C9A84C] bg-[#141414] hover:bg-[#1A1A1A] transition-all flex items-center justify-center gap-1.5"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            + Add Walk-On Player {activeSide !== 'boxscore' ? `to ${activeSide === 'away' ? awayData?.teamName || 'Away' : homeData?.teamName || 'Home'}` : ''}
+          </button>
+        ) : (
+          <div className="w-full flex flex-wrap items-center gap-2 bg-[#161616] p-3 rounded-lg border border-[#2A2A2A] animate-in fade-in">
+            {activeSide === 'boxscore' && (
+              <select
+                value={newPlayerTeamSide}
+                onChange={(e) => setNewPlayerTeamSide(e.target.value as 'away' | 'home')}
+                className="rounded-md border border-[#333] bg-[#1F1F1F] px-2 py-1 text-xs font-bold text-[#C9A84C] focus:border-[#C9A84C] focus:outline-none"
+              >
+                <option value="away">Away: {awayData?.teamName || 'Away'}</option>
+                <option value="home">Home: {homeData?.teamName || 'Home'}</option>
+              </select>
+            )}
+            <input
+              type="number"
+              placeholder="#"
+              value={newPlayerJersey}
+              onChange={(e) => setNewPlayerJersey(e.target.value)}
+              className="w-14 rounded-md border border-[#333] bg-[#1F1F1F] px-2 py-1 text-xs font-bold text-center text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
+            />
+            <input
+              type="text"
+              placeholder="Player Name (e.g. Marcus Smart)"
+              value={newPlayerName}
+              onChange={(e) => setNewPlayerName(e.target.value)}
+              className="flex-1 min-w-[150px] rounded-md border border-[#333] bg-[#1F1F1F] px-3 py-1 text-xs font-medium text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
+            />
             <button
               type="button"
-              onClick={() => setShowAddPlayer(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C9A84C] hover:text-[#E8C76A] transition-colors"
+              disabled={addPlayerMutation.isPending}
+              onClick={() => addPlayerMutation.mutate()}
+              className="rounded-md bg-[#C9A84C] px-3 py-1 text-xs font-bold text-[#0A0A0A] hover:bg-[#E8C76A] disabled:opacity-50"
             >
-              <UserPlus className="h-3.5 w-3.5" />
-              + Quick Add Player to {activeSide === 'away' ? awayData?.teamName : homeData?.teamName} Roster
+              Add Player
             </button>
-          ) : (
-            <div className="w-full flex flex-wrap items-center gap-2 bg-[#161616] p-3 rounded-lg border border-[#2A2A2A] animate-in fade-in">
-              <input
-                type="number"
-                placeholder="#"
-                value={newPlayerJersey}
-                onChange={(e) => setNewPlayerJersey(e.target.value)}
-                className="w-14 rounded-md border border-[#333] bg-[#1F1F1F] px-2 py-1 text-xs font-bold text-center text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
-              />
-              <input
-                type="text"
-                placeholder="Player Name (e.g. Marcus Smart)"
-                value={newPlayerName}
-                onChange={(e) => setNewPlayerName(e.target.value)}
-                className="flex-1 min-w-[150px] rounded-md border border-[#333] bg-[#1F1F1F] px-3 py-1 text-xs font-medium text-[#F5F5F0] focus:border-[#C9A84C] focus:outline-none"
-              />
-              <button
-                type="button"
-                disabled={addPlayerMutation.isPending}
-                onClick={() => addPlayerMutation.mutate()}
-                className="rounded-md bg-[#C9A84C] px-3 py-1 text-xs font-bold text-[#0A0A0A] hover:bg-[#E8C76A]"
-              >
-                Add Player
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddPlayer(false)}
-                className="rounded-md bg-[#222] px-2.5 py-1 text-xs text-[#8A8A8A] hover:text-[#F5F5F0]"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddPlayer(false);
+                setNewPlayerName('');
+                setNewPlayerJersey('');
+              }}
+              className="rounded-md bg-[#222] px-2.5 py-1 text-xs text-[#8A8A8A] hover:text-[#F5F5F0]"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ── Active Team Player Roster Stat Cards ──────────────────────────────── */}
       {activeSide !== 'boxscore' ? (
@@ -241,15 +258,8 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
           {currentPlayers.length === 0 ? (
             <div className="rounded-lg border border-[#222222] bg-[#141414] p-8 text-center text-[#8A8A8A]">
               <Users className="h-8 w-8 mx-auto mb-2 text-[#8A8A8A]" />
-              <p className="text-xs font-semibold">No players on roster yet.</p>
-              <button
-                type="button"
-                onClick={() => setShowAddPlayer(true)}
-                className="mt-3 inline-flex items-center gap-1 rounded-md bg-[#C9A84C] px-3 py-1.5 text-xs font-bold text-[#0A0A0A]"
-              >
-                <UserPlus className="h-3.5 w-3.5" />
-                Add First Player
-              </button>
+              <p className="text-xs font-semibold">No players on this roster yet.</p>
+              <p className="text-[11px] text-[#666666] mt-1">Use the Add Walk-On Player form above to register players for this match.</p>
             </div>
           ) : (
             currentPlayers.map((player) => {
@@ -278,177 +288,157 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
                     </div>
 
                     {/* Live Stat Badges */}
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="rounded bg-[#C9A84C]/15 px-2 py-0.5 font-bold text-[#C9A84C] border border-[#C9A84C]/30">
-                        {player.pts} <span className="text-[10px] opacity-80">PTS</span>
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                      <span className="px-2 py-0.5 rounded bg-[#1F1F1F] text-[#C9A84C] font-bold border border-[#2E2E2E]">
+                        {player.pts} PTS
                       </span>
-                      <span className="rounded bg-[#1F1F1F] px-1.5 py-0.5 font-semibold text-[#D1D1D1]">
-                        {player.reb} <span className="text-[10px] text-[#8A8A8A]">REB</span>
+                      <span className="px-2 py-0.5 rounded bg-[#1A1A1A] text-[#F5F5F0]">
+                        {player.reb} REB
                       </span>
-                      <span className="rounded bg-[#1F1F1F] px-1.5 py-0.5 font-semibold text-[#D1D1D1]">
-                        {player.ast} <span className="text-[10px] text-[#8A8A8A]">AST</span>
+                      <span className="px-2 py-0.5 rounded bg-[#1A1A1A] text-[#F5F5F0]">
+                        {player.ast} AST
                       </span>
-                      <span className="rounded bg-[#1F1F1F] px-1.5 py-0.5 font-semibold text-[#D1D1D1]">
-                        {player.stl} <span className="text-[10px] text-[#8A8A8A]">STL</span>
+                      <span className="px-2 py-0.5 rounded bg-[#1A1A1A] text-[#8A8A8A]">
+                        {player.stl} STL
                       </span>
-                      <span className="rounded bg-[#1F1F1F] px-1.5 py-0.5 font-semibold text-[#D1D1D1]">
-                        {player.blk} <span className="text-[10px] text-[#8A8A8A]">BLK</span>
+                      <span className="px-2 py-0.5 rounded bg-[#1A1A1A] text-[#8A8A8A]">
+                        {player.blk} BLK
                       </span>
-                      <span className={`rounded bg-[#1F1F1F] px-1.5 py-0.5 text-xs ${foulWarning || 'text-[#8A8A8A]'}`}>
-                        {player.fls} <span className="text-[10px]">FLS</span>
+                      <span className={`px-2 py-0.5 rounded bg-[#1A1A1A] text-[#8A8A8A] ${foulWarning}`}>
+                        {player.fls} FL{player.fls >= 5 && ' (FOULED OUT)'}
                       </span>
                     </div>
                   </div>
 
-                  {/* 1-Tap Stat Attribution Buttons */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#1C1C1C]">
-                    {/* Scoring Buttons (Syncs Team Score) */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          recordStatMutation.mutate({
-                            playerId: player.playerId,
-                            stat: 'pts',
-                            delta: 1,
-                            teamSide: activeSide,
-                            playerName: player.playerName,
-                          })
-                        }
-                        className="rounded bg-[#C9A84C] hover:bg-[#E8C76A] px-2.5 py-1 text-xs font-bold text-[#0A0A0A] active:scale-95 transition-all shadow-sm"
-                      >
-                        +1 FT
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          recordStatMutation.mutate({
-                            playerId: player.playerId,
-                            stat: 'pts',
-                            delta: 2,
-                            teamSide: activeSide,
-                            playerName: player.playerName,
-                          })
-                        }
-                        className="rounded bg-[#C9A84C] hover:bg-[#E8C76A] px-2.5 py-1 text-xs font-bold text-[#0A0A0A] active:scale-95 transition-all shadow-sm"
-                      >
-                        +2 FG
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          recordStatMutation.mutate({
-                            playerId: player.playerId,
-                            stat: 'pts',
-                            delta: 3,
-                            teamSide: activeSide,
-                            playerName: player.playerName,
-                          })
-                        }
-                        className="rounded bg-[#C9A84C] hover:bg-[#E8C76A] px-2.5 py-1 text-xs font-bold text-[#0A0A0A] active:scale-95 transition-all shadow-sm"
-                      >
-                        +3 3PT
-                      </button>
-                    </div>
-
-                    <div className="h-4 w-px bg-[#262626] mx-0.5" />
-
-                    {/* Rebound, Assist, Steal, Block */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          recordStatMutation.mutate({
-                            playerId: player.playerId,
-                            stat: 'reb',
-                            delta: 1,
-                            teamSide: activeSide,
-                            playerName: player.playerName,
-                          })
-                        }
-                        className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-2 py-1 text-xs font-semibold text-[#F5F5F0]"
-                      >
-                        +1 REB
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          recordStatMutation.mutate({
-                            playerId: player.playerId,
-                            stat: 'ast',
-                            delta: 1,
-                            teamSide: activeSide,
-                            playerName: player.playerName,
-                          })
-                        }
-                        className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-2 py-1 text-xs font-semibold text-[#F5F5F0]"
-                      >
-                        +1 AST
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          recordStatMutation.mutate({
-                            playerId: player.playerId,
-                            stat: 'stl',
-                            delta: 1,
-                            teamSide: activeSide,
-                            playerName: player.playerName,
-                          })
-                        }
-                        className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-2 py-1 text-xs font-semibold text-[#F5F5F0]"
-                      >
-                        +1 STL
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          recordStatMutation.mutate({
-                            playerId: player.playerId,
-                            stat: 'blk',
-                            delta: 1,
-                            teamSide: activeSide,
-                            playerName: player.playerName,
-                          })
-                        }
-                        className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-2 py-1 text-xs font-semibold text-[#F5F5F0]"
-                      >
-                        +1 BLK
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          recordStatMutation.mutate({
-                            playerId: player.playerId,
-                            stat: 'fls',
-                            delta: 1,
-                            teamSide: activeSide,
-                            playerName: player.playerName,
-                          })
-                        }
-                        className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] px-2 py-1 text-xs font-semibold text-[#F4A261]"
-                      >
-                        +1 FL
-                      </button>
-                    </div>
-
-                    <div className="h-4 w-px bg-[#262626] mx-0.5 ml-auto" />
-
-                    {/* Correction */}
+                  {/* 1-Tap Action Buttons Grid */}
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 pt-2 border-t border-[#1C1C1C]">
                     <button
                       type="button"
+                      disabled={statMutation.isPending}
                       onClick={() =>
-                        recordStatMutation.mutate({
+                        statMutation.mutate({
                           playerId: player.playerId,
-                          stat: 'pts',
-                          delta: -1,
-                          teamSide: activeSide,
                           playerName: player.playerName,
+                          stat: 'pts',
+                          delta: 1,
+                          teamSide: activeSide,
                         })
                       }
-                      className="rounded bg-[#1A1A1A] hover:bg-[#222222] px-1.5 py-1 text-[11px] font-medium text-[#E63946]"
+                      className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] p-1.5 text-center text-xs font-bold text-[#F5F5F0] transition-colors"
                     >
-                      -1 PT
+                      +1 FT
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statMutation.isPending}
+                      onClick={() =>
+                        statMutation.mutate({
+                          playerId: player.playerId,
+                          playerName: player.playerName,
+                          stat: 'pts',
+                          delta: 2,
+                          teamSide: activeSide,
+                        })
+                      }
+                      className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] p-1.5 text-center text-xs font-bold text-[#C9A84C] transition-colors"
+                    >
+                      +2 FG
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statMutation.isPending}
+                      onClick={() =>
+                        statMutation.mutate({
+                          playerId: player.playerId,
+                          playerName: player.playerName,
+                          stat: 'pts',
+                          delta: 3,
+                          teamSide: activeSide,
+                        })
+                      }
+                      className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] p-1.5 text-center text-xs font-bold text-[#C9A84C] transition-colors"
+                    >
+                      +3 3PT
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statMutation.isPending}
+                      onClick={() =>
+                        statMutation.mutate({
+                          playerId: player.playerId,
+                          playerName: player.playerName,
+                          stat: 'reb',
+                          delta: 1,
+                          teamSide: activeSide,
+                        })
+                      }
+                      className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] p-1.5 text-center text-xs font-bold text-[#F5F5F0] transition-colors"
+                    >
+                      +1 REB
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statMutation.isPending}
+                      onClick={() =>
+                        statMutation.mutate({
+                          playerId: player.playerId,
+                          playerName: player.playerName,
+                          stat: 'ast',
+                          delta: 1,
+                          teamSide: activeSide,
+                        })
+                      }
+                      className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] p-1.5 text-center text-xs font-bold text-[#F5F5F0] transition-colors"
+                    >
+                      +1 AST
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statMutation.isPending}
+                      onClick={() =>
+                        statMutation.mutate({
+                          playerId: player.playerId,
+                          playerName: player.playerName,
+                          stat: 'stl',
+                          delta: 1,
+                          teamSide: activeSide,
+                        })
+                      }
+                      className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] p-1.5 text-center text-xs font-bold text-[#8A8A8A] hover:text-[#F5F5F0] transition-colors"
+                    >
+                      +1 STL
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statMutation.isPending}
+                      onClick={() =>
+                        statMutation.mutate({
+                          playerId: player.playerId,
+                          playerName: player.playerName,
+                          stat: 'blk',
+                          delta: 1,
+                          teamSide: activeSide,
+                        })
+                      }
+                      className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] p-1.5 text-center text-xs font-bold text-[#8A8A8A] hover:text-[#F5F5F0] transition-colors"
+                    >
+                      +1 BLK
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statMutation.isPending}
+                      onClick={() =>
+                        statMutation.mutate({
+                          playerId: player.playerId,
+                          playerName: player.playerName,
+                          stat: 'fls',
+                          delta: 1,
+                          teamSide: activeSide,
+                        })
+                      }
+                      className="rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] p-1.5 text-center text-xs font-bold text-[#F4A261] transition-colors"
+                    >
+                      +1 FL
                     </button>
                   </div>
                 </div>
@@ -457,96 +447,100 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
           )}
         </div>
       ) : (
-        /* ── Full Live Box Score View ─────────────────────────────────────────── */
+        /* ── Full Box Score Table View ────────────────────────────────────────── */
         <div className="space-y-6">
-          {/* Away Team Box Score Table */}
-          <div>
-            <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider mb-2 flex items-center justify-between">
-              <span>{awayData?.teamName ?? 'Away'} Box Score</span>
-              <span>Total PTS: {awayTotals.pts}</span>
-            </h4>
+          {/* Away Team Box Score */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#C9A84C]">
+                {awayData?.teamName || 'Away'} Box Score
+              </h4>
+              <span className="text-xs font-bold text-[#F5F5F0]">{awayTotals.pts} PTS</span>
+            </div>
             <div className="overflow-x-auto rounded-lg border border-[#222222]">
-              <table className="w-full text-left text-xs font-medium">
-                <thead className="bg-[#181818] text-[10px] uppercase font-bold text-[#8A8A8A] border-b border-[#222222]">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#181818] text-[#8A8A8A] font-semibold border-b border-[#222222]">
                   <tr>
-                    <th className="py-2 px-3">#</th>
-                    <th className="py-2 px-3">Player</th>
-                    <th className="py-2 px-2 text-center text-[#C9A84C]">PTS</th>
-                    <th className="py-2 px-2 text-center">REB</th>
-                    <th className="py-2 px-2 text-center">AST</th>
-                    <th className="py-2 px-2 text-center">STL</th>
-                    <th className="py-2 px-2 text-center">BLK</th>
-                    <th className="py-2 px-2 text-center">FLS</th>
+                    <th className="p-2 pl-3">#</th>
+                    <th className="p-2">Player</th>
+                    <th className="p-2 text-center text-[#C9A84C]">PTS</th>
+                    <th className="p-2 text-center">REB</th>
+                    <th className="p-2 text-center">AST</th>
+                    <th className="p-2 text-center">STL</th>
+                    <th className="p-2 text-center">BLK</th>
+                    <th className="p-2 text-center">FLS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1F1F1F] bg-[#141414]">
+                <tbody className="divide-y divide-[#1C1C1C] bg-[#141414]">
                   {(awayData?.players ?? []).map((p) => (
                     <tr key={p.playerId} className="hover:bg-[#1A1A1A]">
-                      <td className="py-2 px-3 text-[#C9A84C] font-bold">{p.jerseyNumber !== null ? `#${p.jerseyNumber}` : '—'}</td>
-                      <td className="py-2 px-3 text-[#F5F5F0] font-semibold">{p.playerName}</td>
-                      <td className="py-2 px-2 text-center font-bold text-[#C9A84C]">{p.pts}</td>
-                      <td className="py-2 px-2 text-center text-[#D1D1D1]">{p.reb}</td>
-                      <td className="py-2 px-2 text-center text-[#D1D1D1]">{p.ast}</td>
-                      <td className="py-2 px-2 text-center text-[#D1D1D1]">{p.stl}</td>
-                      <td className="py-2 px-2 text-center text-[#D1D1D1]">{p.blk}</td>
-                      <td className="py-2 px-2 text-center text-[#8A8A8A]">{p.fls}</td>
+                      <td className="p-2 pl-3 font-bold text-[#8A8A8A]">{p.jerseyNumber ?? '—'}</td>
+                      <td className="p-2 font-semibold text-[#F5F5F0]">{p.playerName}</td>
+                      <td className="p-2 text-center font-bold text-[#C9A84C]">{p.pts}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.reb}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.ast}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.stl}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.blk}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.fls}</td>
                     </tr>
                   ))}
-                  <tr className="bg-[#181818] font-bold border-t border-[#262626]">
-                    <td className="py-2 px-3" colSpan={2}>TOTALS</td>
-                    <td className="py-2 px-2 text-center text-[#C9A84C]">{awayTotals.pts}</td>
-                    <td className="py-2 px-2 text-center">{awayTotals.reb}</td>
-                    <td className="py-2 px-2 text-center">{awayTotals.ast}</td>
-                    <td className="py-2 px-2 text-center">{awayTotals.stl}</td>
-                    <td className="py-2 px-2 text-center">{awayTotals.blk}</td>
-                    <td className="py-2 px-2 text-center">{awayTotals.fls}</td>
+                  <tr className="bg-[#181818] font-bold text-[#F5F5F0]">
+                    <td colSpan={2} className="p-2 pl-3 text-[#8A8A8A]">TOTALS</td>
+                    <td className="p-2 text-center text-[#C9A84C]">{awayTotals.pts}</td>
+                    <td className="p-2 text-center">{awayTotals.reb}</td>
+                    <td className="p-2 text-center">{awayTotals.ast}</td>
+                    <td className="p-2 text-center">{awayTotals.stl}</td>
+                    <td className="p-2 text-center">{awayTotals.blk}</td>
+                    <td className="p-2 text-center">{awayTotals.fls}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Home Team Box Score Table */}
-          <div>
-            <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider mb-2 flex items-center justify-between">
-              <span>{homeData?.teamName ?? 'Home'} Box Score</span>
-              <span>Total PTS: {homeTotals.pts}</span>
-            </h4>
+          {/* Home Team Box Score */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#C9A84C]">
+                {homeData?.teamName || 'Home'} Box Score
+              </h4>
+              <span className="text-xs font-bold text-[#F5F5F0]">{homeTotals.pts} PTS</span>
+            </div>
             <div className="overflow-x-auto rounded-lg border border-[#222222]">
-              <table className="w-full text-left text-xs font-medium">
-                <thead className="bg-[#181818] text-[10px] uppercase font-bold text-[#8A8A8A] border-b border-[#222222]">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#181818] text-[#8A8A8A] font-semibold border-b border-[#222222]">
                   <tr>
-                    <th className="py-2 px-3">#</th>
-                    <th className="py-2 px-3">Player</th>
-                    <th className="py-2 px-2 text-center text-[#C9A84C]">PTS</th>
-                    <th className="py-2 px-2 text-center">REB</th>
-                    <th className="py-2 px-2 text-center">AST</th>
-                    <th className="py-2 px-2 text-center">STL</th>
-                    <th className="py-2 px-2 text-center">BLK</th>
-                    <th className="py-2 px-2 text-center">FLS</th>
+                    <th className="p-2 pl-3">#</th>
+                    <th className="p-2">Player</th>
+                    <th className="p-2 text-center text-[#C9A84C]">PTS</th>
+                    <th className="p-2 text-center">REB</th>
+                    <th className="p-2 text-center">AST</th>
+                    <th className="p-2 text-center">STL</th>
+                    <th className="p-2 text-center">BLK</th>
+                    <th className="p-2 text-center">FLS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1F1F1F] bg-[#141414]">
+                <tbody className="divide-y divide-[#1C1C1C] bg-[#141414]">
                   {(homeData?.players ?? []).map((p) => (
                     <tr key={p.playerId} className="hover:bg-[#1A1A1A]">
-                      <td className="py-2 px-3 text-[#C9A84C] font-bold">{p.jerseyNumber !== null ? `#${p.jerseyNumber}` : '—'}</td>
-                      <td className="py-2 px-3 text-[#F5F5F0] font-semibold">{p.playerName}</td>
-                      <td className="py-2 px-2 text-center font-bold text-[#C9A84C]">{p.pts}</td>
-                      <td className="py-2 px-2 text-center text-[#D1D1D1]">{p.reb}</td>
-                      <td className="py-2 px-2 text-center text-[#D1D1D1]">{p.ast}</td>
-                      <td className="py-2 px-2 text-center text-[#D1D1D1]">{p.stl}</td>
-                      <td className="py-2 px-2 text-center text-[#D1D1D1]">{p.blk}</td>
-                      <td className="py-2 px-2 text-center text-[#8A8A8A]">{p.fls}</td>
+                      <td className="p-2 pl-3 font-bold text-[#8A8A8A]">{p.jerseyNumber ?? '—'}</td>
+                      <td className="p-2 font-semibold text-[#F5F5F0]">{p.playerName}</td>
+                      <td className="p-2 text-center font-bold text-[#C9A84C]">{p.pts}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.reb}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.ast}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.stl}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.blk}</td>
+                      <td className="p-2 text-center text-[#8A8A8A]">{p.fls}</td>
                     </tr>
                   ))}
-                  <tr className="bg-[#181818] font-bold border-t border-[#262626]">
-                    <td className="py-2 px-3" colSpan={2}>TOTALS</td>
-                    <td className="py-2 px-2 text-center text-[#C9A84C]">{homeTotals.pts}</td>
-                    <td className="py-2 px-2 text-center">{homeTotals.reb}</td>
-                    <td className="py-2 px-2 text-center">{homeTotals.ast}</td>
-                    <td className="py-2 px-2 text-center">{homeTotals.stl}</td>
-                    <td className="py-2 px-2 text-center">{homeTotals.blk}</td>
-                    <td className="py-2 px-2 text-center">{homeTotals.fls}</td>
+                  <tr className="bg-[#181818] font-bold text-[#F5F5F0]">
+                    <td colSpan={2} className="p-2 pl-3 text-[#8A8A8A]">TOTALS</td>
+                    <td className="p-2 text-center text-[#C9A84C]">{homeTotals.pts}</td>
+                    <td className="p-2 text-center">{homeTotals.reb}</td>
+                    <td className="p-2 text-center">{homeTotals.ast}</td>
+                    <td className="p-2 text-center">{homeTotals.stl}</td>
+                    <td className="p-2 text-center">{homeTotals.blk}</td>
+                    <td className="p-2 text-center">{homeTotals.fls}</td>
                   </tr>
                 </tbody>
               </table>

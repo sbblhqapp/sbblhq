@@ -32,6 +32,7 @@ export interface GamePlayerStatsResponse {
 }
 
 export type StatType = 'pts' | 'reb' | 'ast' | 'stl' | 'blk' | 'fls' | 'min';
+export type PlayerStatType = StatType;
 
 /** Fetch player roster and game stats for both teams */
 export async function fetchGamePlayerStats(gameId: string): Promise<GamePlayerStatsResponse> {

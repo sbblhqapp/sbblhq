@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/contexts/AppContext';
-import { useAuth } from '@/hooks/use-auth';
 import { LEAGUE_REGISTRY, getLeagueConfig } from '@/lib/leagues';
 import { LeagueBadge } from '@/components/ui/LeagueBadge';
 import type { LeagueId, ScoreCategory, ScoreEntry } from '@/types';
@@ -137,9 +136,8 @@ function ScoreCard({ entry }: { readonly entry: ScoreEntry }) {
   const winner = winnerSide(entry);
   const hasScore = entry.homeScore != null && entry.awayScore != null;
   const leagueId = entry.leagueId;
-  const { isAdmin } = useApp();
-  const { roles } = useAuth();
-  const isScoreAdmin = isAdmin || roles.some((r) => ['super_admin', 'league_admin', 'scorekeeper', 'team_manager'].includes(r));
+  const { isAdmin, authRole } = useApp();
+  const isScoreAdmin = isAdmin || ['super_admin', 'league_admin', 'scorekeeper', 'team_manager'].includes(authRole);
 
   return (
     <div className="panel p-0 overflow-hidden flex flex-col">

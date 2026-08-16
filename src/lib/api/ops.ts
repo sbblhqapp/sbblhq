@@ -367,6 +367,53 @@ export async function bulkArchiveMedia(ids: string[]) {
   );
 }
 
+export type ArchivedMediaPurgePreviewResponse = {
+  ok: boolean;
+  totalEligible: number;
+  totalStorageFiles: number;
+  retentionDays: number;
+  cutoffDate: string;
+  publications: Array<{
+    id: string;
+    mediaAssetId: string | null;
+    title: string;
+    surface: string;
+    leagueCode: string | null;
+    archivedAt: string;
+    daysArchived: number;
+    storagePaths: string[];
+  }>;
+};
+
+export type ArchivedMediaPurgeExecuteResponse = {
+  ok: boolean;
+  purgedPublications: number;
+  purgedAssets: number;
+  storageFilesRemoved: number;
+  purgedIds: string[];
+  removedStoragePaths: string[];
+  criteria: { retentionDays: number; cutoffDate: string; executionMode: string };
+};
+
+/** Preview archived media eligible for autonomous/manual 30-day purge */
+export async function previewArchivedMediaPurge(days = 30) {
+  return apiFetch<ArchivedMediaPurgePreviewResponse>(
+    `/ops/media/archived-purge-preview?days=${days}`
+  );
+}
+
+/** Execute manual on-demand purge of archived media older than 30 days */
+export async function executeArchivedMediaPurge(days = 30) {
+  return apiFetch<ArchivedMediaPurgeExecuteResponse>(
+    '/ops/media/archived-purge-execute',
+    {
+      method: 'POST',
+      headers: { [IDEMPOTENCY_HEADER]: createIdempotencyKey('ops-archived-purge-execute') },
+      body: JSON.stringify({ retentionDays: days }),
+    },
+  );
+}
+
 /** Toggle pin on a publication. null = unpin, ISO timestamp = pin. */
 export async function toggleMediaPin(id: string, pinned: boolean) {
   return patchOpsMediaPublication(id, {

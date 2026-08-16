@@ -25,6 +25,9 @@
     // non-API routes and wraps the response with addSecurityHeaders().
     "run_worker_first": true
   },
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
   "vars": {
     // Cloud Supabase project URL — same value as wrangler.jsonc.
     // Replace SBBL_SUPABASE_PROJECT_REF with your actual Supabase project ref.

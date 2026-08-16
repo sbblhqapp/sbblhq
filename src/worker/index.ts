@@ -2846,8 +2846,13 @@ async function handleOpsPatchMediaPublications(ctx: HandlerCtx) {
     // Keep published_at consistent with status transitions.
     if (body.status === 'published') {
       update.published_at = new Date().toISOString();
-    } else if (body.status === 'archived' || body.status === 'draft') {
+      update.archived_at = null;
+    } else if (body.status === 'archived') {
       update.published_at = null;
+      update.archived_at = new Date().toISOString();
+    } else if (body.status === 'draft' || body.status === 'scheduled') {
+      update.published_at = null;
+      update.archived_at = null;
     }
   }
   if (body.leagueId === null) {
@@ -2918,6 +2923,7 @@ async function handleOpsDeleteMediaPublications(ctx: HandlerCtx) {
     .update({
       status: 'archived',
       published_at: null,
+      archived_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -3029,10 +3035,10 @@ async function handleOpsMediaRestore(ctx: HandlerCtx) {
     return json({ ok: true, data: existing });
   }
 
-  // Restore to draft, clear published_at
+  // Restore to draft, clear published_at and archived_at
   const { data, error } = await ctx.admin
     .from('media_publications')
-    .update({ status: 'draft', published_at: null, updated_at: new Date().toISOString() })
+    .update({ status: 'draft', published_at: null, archived_at: null, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select('id,status,title,surface,league_id')
     .single();
@@ -3157,7 +3163,12 @@ async function handleOpsMediaStaleExecute(ctx: HandlerCtx) {
   // server-side preview query and the execute update.
   const { data: archivedRows, error: updateErr } = await ctx.admin
     .from('media_publications')
-    .update({ status: 'archived', published_at: null, updated_at: new Date().toISOString() })
+    .update({
+      status: 'archived',
+      published_at: null,
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
     .in('id', staleIds)
     .eq('status', 'published')
     .is('pinned_at', null)
@@ -3238,6 +3249,318 @@ async function handleOpsBulkArchive(ctx: HandlerCtx) {
 
   return json({ ok: true, archived: archivedIds.length, ids: archivedIds });
 }
+
+// ── Autonomous Archived Media 30-Day Purge Engine ──────────────────────────
+
+/**
+ * Extracts storage bucket and relative object paths from media publication render payloads
+ * and media asset metadata.
+ */
+export function extractStoragePaths(
+  payload: Record<string, unknown> | null | undefined,
+  meta?: Record<string, unknown> | null | undefined
+): Array<{ bucket: string; path: string }> {
+  const result: Array<{ bucket: string; path: string }> = [];
+  const candidates: string[] = [];
+
+  const addCandidate = (val: unknown) => {
+    if (typeof val === 'string' && val.trim().length > 0) {
+      candidates.push(val.trim());
+    }
+  };
+
+  if (payload && typeof payload === 'object') {
+    addCandidate(payload.storage_path);
+    addCandidate(payload.storagePath);
+    addCandidate(payload.objectPath);
+    addCandidate(payload.url);
+    addCandidate(payload.thumbnail_url);
+    addCandidate(payload.thumbnailUrl);
+    addCandidate(payload.poster_url);
+    addCandidate(payload.posterUrl);
+    addCandidate(payload.image_url);
+    addCandidate(payload.imageUrl);
+    addCandidate(payload.video_url);
+    addCandidate(payload.videoUrl);
+  }
+
+  if (meta && typeof meta === 'object') {
+    addCandidate(meta.storage_path);
+    addCandidate(meta.storagePath);
+    addCandidate(meta.objectPath);
+    addCandidate(meta.url);
+    addCandidate(meta.thumbnail_url);
+    addCandidate(meta.thumbnailUrl);
+  }
+
+  const knownBuckets = ['media', 'league-media', 'highlight-clips', 'store-products', 'share-assets', 'player-headshots'];
+
+  for (const raw of candidates) {
+    // 1. Supabase storage URL: /storage/v1/object/(public|sign|authenticated)/<bucket>/<path>
+    const storageMatch = raw.match(/\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+)$/);
+    if (storageMatch) {
+      const bucket = storageMatch[1];
+      const path = decodeURIComponent(storageMatch[2].split('?')[0]);
+      if (bucket && path && !result.some((r) => r.bucket === bucket && r.path === path)) {
+        result.push({ bucket, path });
+      }
+      continue;
+    }
+
+    // 2. Relative paths (e.g. "potg/2026/04/abc.jpg" or "media/banners/def.png")
+    if (!raw.startsWith('http://') && !raw.startsWith('https://') && !raw.startsWith('data:')) {
+      const clean = raw.replace(/^\/+/, '').split('?')[0];
+      const parts = clean.split('/');
+      if (parts.length >= 2 && knownBuckets.includes(parts[0])) {
+        const bucket = parts[0];
+        const path = parts.slice(1).join('/');
+        if (!result.some((r) => r.bucket === bucket && r.path === path)) {
+          result.push({ bucket, path });
+        }
+        continue;
+      }
+      if (clean.length > 0 && !result.some((r) => r.bucket === 'media' && r.path === clean)) {
+        result.push({ bucket: 'media', path: clean });
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Permanently and autonomously purges archived media older than retentionDays (default 30 days)
+ * from both Supabase Database tables (media_publications, orphaned media_assets) and
+ * all physical storage buckets.
+ */
+export async function autonomousPurgeArchivedMedia(
+  admin: SupabaseClient,
+  env: Env,
+  options?: {
+    retentionDays?: number;
+    executionMode?: 'autonomous' | 'manual';
+    actorId?: string | null;
+    req?: Request;
+  }
+) {
+  const retentionDays = Math.max(Number(options?.retentionDays ?? 30), 1);
+  const executionMode = options?.executionMode ?? 'autonomous';
+  const actorId = options?.actorId ?? '00000000-0000-0000-0000-000000000000';
+  const cutoffDate = new Date(Date.now() - retentionDays * 86_400_000).toISOString();
+
+  // 1. Fetch expired archived publications
+  const { data: expiredPubs, error: fetchErr } = await admin
+    .from('media_publications')
+    .select(
+      'id,media_asset_id,title,status,archived_at,updated_at,render_payload,media_assets(id,metadata)'
+    )
+    .eq('status', 'archived')
+    .or(`archived_at.lt.${cutoffDate},and(archived_at.is.null,updated_at.lt.${cutoffDate})`);
+
+  if (fetchErr) throw new Error(`Fetch expired archived media failed: ${fetchErr.message}`);
+
+  const publications = (expiredPubs ?? []) as unknown as Array<{
+    id: string;
+    media_asset_id: string | null;
+    title: string;
+    status: string;
+    archived_at: string | null;
+    updated_at: string | null;
+    render_payload: Record<string, unknown> | null;
+    media_assets: { id: string; metadata: Record<string, unknown> | null } | null;
+  }>;
+
+  if (publications.length === 0) {
+    return {
+      ok: true,
+      purgedPublications: 0,
+      purgedAssets: 0,
+      storageFilesRemoved: 0,
+      purgedIds: [],
+      removedStoragePaths: [],
+      criteria: { retentionDays, cutoffDate, executionMode },
+    };
+  }
+
+  // 2. Extract storage file paths grouped by bucket
+  const bucketPathsMap = new Map<string, Set<string>>();
+  const allExtractedPaths: string[] = [];
+
+  for (const pub of publications) {
+    const paths = extractStoragePaths(pub.render_payload, pub.media_assets?.metadata);
+    for (const item of paths) {
+      if (!bucketPathsMap.has(item.bucket)) {
+        bucketPathsMap.set(item.bucket, new Set());
+      }
+      bucketPathsMap.get(item.bucket)!.add(item.path);
+      allExtractedPaths.push(`${item.bucket}/${item.path}`);
+    }
+  }
+
+  // 3. Remove physical files from storage buckets
+  let storageFilesRemoved = 0;
+  for (const [bucket, pathSet] of bucketPathsMap.entries()) {
+    const pathsArray = Array.from(pathSet);
+    if (pathsArray.length > 0) {
+      try {
+        const { error: storageErr } = await admin.storage.from(bucket).remove(pathsArray);
+        if (storageErr) {
+          console.warn(`Storage deletion warning for bucket '${bucket}': ${storageErr.message}`);
+        } else {
+          storageFilesRemoved += pathsArray.length;
+        }
+      } catch (err) {
+        console.warn(`Failed removing objects from bucket '${bucket}':`, err);
+      }
+    }
+  }
+
+  // 4. Delete media_publications database rows
+  const pubIds = publications.map((p) => p.id);
+  const { error: deletePubErr } = await admin
+    .from('media_publications')
+    .delete()
+    .in('id', pubIds);
+
+  if (deletePubErr) throw new Error(`Delete media_publications failed: ${deletePubErr.message}`);
+
+  // 5. Clean up orphaned media_assets
+  const assetIds = Array.from(
+    new Set(publications.map((p) => p.media_asset_id).filter((id): id is string => Boolean(id)))
+  );
+  let purgedAssetsCount = 0;
+
+  if (assetIds.length > 0) {
+    const { data: activeRefs } = await admin
+      .from('media_publications')
+      .select('media_asset_id')
+      .in('media_asset_id', assetIds);
+
+    const activeAssetIds = new Set(
+      ((activeRefs ?? []) as Array<{ media_asset_id: string | null }>).map((r) => r.media_asset_id)
+    );
+    const orphanAssetIds = assetIds.filter((id) => !activeAssetIds.has(id));
+
+    if (orphanAssetIds.length > 0) {
+      const { error: deleteAssetErr } = await admin
+        .from('media_assets')
+        .delete()
+        .in('id', orphanAssetIds);
+
+      if (!deleteAssetErr) {
+        purgedAssetsCount = orphanAssetIds.length;
+      }
+    }
+  }
+
+  // 6. Record Audit Log
+  const idempotencyKey = options?.req ? readIdempotencyKey(options.req.headers) : crypto.randomUUID();
+  await admin.from('audit_logs').insert({
+    actor_id: actorId,
+    action: 'autonomous_archived_media_purge',
+    ref_type: 'media_publications',
+    ref_id: null,
+    payload: {
+      purgedPublicationsCount: pubIds.length,
+      purgedAssetsCount,
+      storageFilesRemoved,
+      purgedPublicationIds: pubIds,
+      storagePaths: allExtractedPaths,
+      criteria: { retentionDays, cutoffDate, executionMode },
+    },
+    idempotency_key: idempotencyKey ?? crypto.randomUUID(),
+  });
+
+  return {
+    ok: true,
+    purgedPublications: pubIds.length,
+    purgedAssets: purgedAssetsCount,
+    storageFilesRemoved,
+    purgedIds: pubIds,
+    removedStoragePaths: allExtractedPaths,
+    criteria: { retentionDays, cutoffDate, executionMode },
+  };
+}
+
+/** GET /ops/media/archived-purge-preview — preview archived media eligible for 30-day autonomous purge */
+async function handleOpsMediaArchivedPurgePreview(ctx: HandlerCtx) {
+  await requireOpsAdminSession(ctx.req, ctx.admin);
+  const url = new URL(ctx.req.url);
+  const daysParam = url.searchParams.get('days') ?? '30';
+  const retentionDays = Math.max(Math.min(Number(daysParam) || 30, 365), 1);
+  const cutoffDate = new Date(Date.now() - retentionDays * 86_400_000).toISOString();
+
+  const { data: expiredPubs, error } = await ctx.admin
+    .from('media_publications')
+    .select(`
+      id,
+      media_asset_id,
+      title,
+      surface,
+      league_id,
+      status,
+      archived_at,
+      updated_at,
+      render_payload,
+      media_assets(id,metadata),
+      leagues:leagues!league_id(code)
+    `)
+    .eq('status', 'archived')
+    .or(`archived_at.lt.${cutoffDate},and(archived_at.is.null,updated_at.lt.${cutoffDate})`);
+
+  if (error) throw new Error(error.message);
+
+  const publications = ((expiredPubs ?? []) as unknown as Record<string, unknown>[]).map((raw) => {
+    const leagueRow = (raw.leagues as Record<string, unknown> | null) ?? {};
+    const mediaAsset = (raw.media_assets as Record<string, unknown> | null) ?? null;
+    const effectiveArchivedAt = (raw.archived_at as string | null) || (raw.updated_at as string | null) || new Date().toISOString();
+    const daysArchived = Math.floor((Date.now() - new Date(effectiveArchivedAt).getTime()) / 86_400_000);
+    const storagePaths = extractStoragePaths(
+      raw.render_payload as Record<string, unknown> | null,
+      mediaAsset?.metadata as Record<string, unknown> | null
+    );
+
+    return {
+      id: String(raw.id),
+      mediaAssetId: raw.media_asset_id ? String(raw.media_asset_id) : null,
+      title: String(raw.title ?? ''),
+      surface: String(raw.surface ?? ''),
+      leagueCode: leagueRow.code == null ? null : String(leagueRow.code),
+      archivedAt: effectiveArchivedAt,
+      daysArchived,
+      storagePaths: storagePaths.map((p) => `${p.bucket}/${p.path}`),
+    };
+  });
+
+  const totalStorageFiles = publications.reduce((acc, p) => acc + p.storagePaths.length, 0);
+
+  return json({
+    ok: true,
+    totalEligible: publications.length,
+    totalStorageFiles,
+    retentionDays,
+    cutoffDate,
+    publications,
+  });
+}
+
+/** POST /ops/media/archived-purge-execute — manual on-demand execution of 30-day archived media purge */
+async function handleOpsMediaArchivedPurgeExecute(ctx: HandlerCtx) {
+  await ensureMutation(ctx.req, ctx);
+  const { userId } = await requireOpsAdminSession(ctx.req, ctx.admin);
+  const body = (await ctx.req.json().catch(() => ({}))) as { retentionDays?: number };
+  const retentionDays = Math.max(Math.min(body.retentionDays ?? 30, 365), 1);
+
+  const result = await autonomousPurgeArchivedMedia(ctx.admin, ctx.env, {
+    retentionDays,
+    executionMode: 'manual',
+    actorId: userId,
+    req: ctx.req,
+  });
+
+  return json(result);
+}
+
 const handlePublicConfig = _handlePublicConfig;
 
 // handlePublicHome — extracted to src/worker/routes/public.ts
@@ -7370,6 +7693,21 @@ export default Sentry.withSentry(
 
     return addSecurityHeaders(json({ ok: false, error: "not_found" }, 404));
   },
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    const parsed = safeServerEnv(env as unknown as Record<string, unknown>);
+    if (!parsed.ok) return;
+    const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    ctx.waitUntil(
+      autonomousPurgeArchivedMedia(admin, env, {
+        retentionDays: 30,
+        executionMode: "autonomous",
+      }).catch((err) => {
+        console.error("Autonomous archived media purge failed:", err);
+      })
+    );
+  },
   },
 );
 
@@ -8080,6 +8418,8 @@ routes.push(
   { method: "POST",   path: "/ops/media/stale-cleanup-preview",    handler: handleOpsMediaStalePreview },
   { method: "POST",   path: "/ops/media/stale-cleanup-execute",    handler: handleOpsMediaStaleExecute },
   { method: "POST",   path: "/ops/media/bulk-archive",             handler: handleOpsBulkArchive },
+  { method: "GET",    path: "/ops/media/archived-purge-preview",   handler: handleOpsMediaArchivedPurgePreview },
+  { method: "POST",   path: "/ops/media/archived-purge-execute",   handler: handleOpsMediaArchivedPurgeExecute },
 );
 
 // ── Scores handlers ────────────────────────────────────────────────────────

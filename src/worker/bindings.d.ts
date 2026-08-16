@@ -68,3 +68,16 @@ interface Env {
 
   ASSETS: { fetch: (req: Request) => Promise<Response> };
 }
+
+interface ScheduledEvent {
+  cron: string;
+  type: string;
+  scheduledTime: number;
+  noRetry(): void;
+}
+
+interface ExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+  passThroughOnException(): void;
+}
+

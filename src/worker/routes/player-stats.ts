@@ -12,7 +12,7 @@
  */
 
 import type { HandlerCtx } from "../shared";
-import { json } from "../shared";
+import { json, CACHE_HEADERS } from "../shared";
 
 function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -205,7 +205,8 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
         players: Array.from(awayPlayersMap.values()),
       },
     },
-    200
+    200,
+    CACHE_HEADERS.REALTIME
   );
 }
 

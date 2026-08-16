@@ -57,8 +57,8 @@ describe('overlay routes', () => {
     expect(overlaySource).not.toContain('"ops_admin"');
   });
 
-  it('public overlay response has no-store cache-control (live state)', () => {
-    expect(overlaySource).toContain('no-store');
+  it('public overlay response has real-time edge cache-control (live state)', () => {
+    expect(overlaySource).toContain('public, max-age=1');
   });
 });
 

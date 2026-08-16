@@ -629,6 +629,7 @@ const OpsPage = () => {
     queryFn: fetchPipelineHealth,
     enabled: canRunOps,
     refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     // A health probe must never hammer or churn the page: no retries — the
     // next 60s tick is the retry. Failures just leave the cards blank.
     retry: false,
@@ -909,6 +910,7 @@ const OpsPage = () => {
     queryFn: () => fetchOverlay(scoreboardGameId),
     enabled: !!scoreboardGameId,
     refetchInterval: 2500,
+    refetchIntervalInBackground: false,
   });
 
   const launchQuickGameMutation = useMutation({

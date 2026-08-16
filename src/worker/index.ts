@@ -2153,12 +2153,12 @@ async function handleStripeWebhook(ctx: HandlerCtx) {
       }
     }
 
-    // Player registration (subscription): set subscription_ends_at + grant player role
+    // Player registration (Season Pass): set subscription_ends_at + grant player role
     if (!purchaseType || purchaseType === "player_registration") {
       try {
         const subEndMs = typeof object.current_period_end === 'number'
           ? object.current_period_end * 1000
-          : Date.now() + 31 * 24 * 60 * 60 * 1000;
+          : Date.now() + 120 * 24 * 60 * 60 * 1000; // ~4 months (Full Season Pass)
         const subEndsAt = new Date(subEndMs).toISOString();
         const stripeCustomerId = typeof object.customer === 'string' ? object.customer : null;
         const stripeSubId = typeof object.subscription === 'string' ? object.subscription : null;
@@ -6864,17 +6864,16 @@ async function handlePlayerCheckout({ req, env, admin }: HandlerCtx) {
     body: new URLSearchParams({
       "payment_method_types[]": "card",
       "line_items[0][price_data][currency]": "cad",
-      "line_items[0][price_data][product_data][name]": "SBBL Player Membership",
+      "line_items[0][price_data][product_data][name]": "SBBL Player Premium Membership (Season Pass)",
       "line_items[0][price_data][product_data][description]":
-        "Monthly player registration. Includes stats, leaderboard, player profile, highlight downloads, and 10% store discount.",
+        "Season player registration. Includes verified stats, leaderboards, player profile, highlight downloads, and 10% store discount.",
       "line_items[0][price_data][unit_amount]": "699", // $6.99 CAD before tax
       "line_items[0][price_data][tax_behavior]": "exclusive", // GST added on top at checkout
-      "line_items[0][price_data][recurring][interval]": "month",
       "line_items[0][quantity]": "1",
       // Automatic tax: Stripe calculates Alberta GST (5%) based on billing address.
       // Requires Stripe Tax to be enabled in the dashboard.
       "automatic_tax[enabled]": "true",
-      mode: "subscription",
+      mode: "payment",
       success_url: successUrl,
       cancel_url: cancelUrl,
       "metadata[user_id]": userId,

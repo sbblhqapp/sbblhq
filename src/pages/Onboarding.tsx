@@ -6,24 +6,35 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { LEAGUE_REGISTRY } from '@/lib/leagues';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api/client';
-import { UserCheck, UserPlus, Check, ChevronDown } from 'lucide-react';
+import { UserCheck, UserPlus, Check, ChevronDown, Sparkles, ShieldCheck } from 'lucide-react';
 
-type RoleIntent = 'fan' | 'player' | 'coach';
+type RoleIntent = 'fan' | 'player_free' | 'player' | 'coach';
 
-const ROLE_OPTIONS: { value: RoleIntent; label: string; description: string }[] = [
+const ROLE_OPTIONS: { value: RoleIntent; label: string; badge?: string; badgeColor?: string; description: string }[] = [
   {
     value: 'fan',
     label: 'Fan',
-    description: 'Follow games, watch streams, and engage with the league.',
+    badge: 'Free',
+    description: 'Follow games, watch streams, and engage with the league community.',
+  },
+  {
+    value: 'player_free',
+    label: 'Player (Free Roster)',
+    badge: 'Free',
+    badgeColor: 'bg-white/10 text-white/80 border-white/20',
+    description: 'Join your team roster for free. Play in league games with basic box score listing.',
   },
   {
     value: 'player',
-    label: 'Player',
-    description: 'Register as a player. Includes stats, leaderboard, player profile, highlight downloads, and a 10% store discount.',
+    label: 'Player Premium',
+    badge: '$6.99 CAD / season',
+    badgeColor: 'bg-primary/20 text-primary border-primary/40 font-bold',
+    description: 'Full season pass: verified career stats, leaderboards, player profile, highlight downloads, and 10% store discount.',
   },
   {
     value: 'coach',
-    label: 'Coach — Free, pending approval',
+    label: 'Coach',
+    badge: 'Free (Pending Approval)',
     description: 'Request coach access. A league admin will review and approve your request.',
   },
 ];
@@ -63,7 +74,7 @@ const OnboardingPage = () => {
   const [form, setForm] = useState({
     displayName: '',
     fullName: '',
-    primaryRoleIntent: (intentParam === 'fan' ? 'fan' : 'fan') as RoleIntent,
+    primaryRoleIntent: (intentParam === 'fan' ? 'fan' : 'player_free') as RoleIntent,
     preferredLeague: 'SBBL',
     bio: '',
     avatarFile: null as File | null,
@@ -74,6 +85,10 @@ const OnboardingPage = () => {
   const [claimMode, setClaimMode] = useState<'claim' | 'new'>('new');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [jerseyNumber, setJerseyNumber] = useState<string>('');
+
+  const isFan = form.primaryRoleIntent === 'fan';
+  const isPlayer = form.primaryRoleIntent === 'player' || form.primaryRoleIntent === 'player_free';
+  const isPlayerPremium = form.primaryRoleIntent === 'player';
 
   // 1. Sourced leagues from Worker API (backed by leagues table)
   const leaguesQuery = useQuery({
@@ -96,7 +111,7 @@ const OnboardingPage = () => {
       apiFetch<{ ok: boolean; data: TeamOption[] }>(
         `/api/public/teams-by-league?league_id=${form.preferredLeague}`,
       ),
-    enabled: form.primaryRoleIntent === 'player' && !!form.preferredLeague,
+    enabled: isPlayer && !!form.preferredLeague,
     staleTime: 2 * 60_000,
   });
 
@@ -120,7 +135,7 @@ const OnboardingPage = () => {
       apiFetch<{ ok: boolean; data: UnclaimedPlayer[] }>(
         `/api/public/unclaimed-players?team_id=${selectedTeamId}`,
       ),
-    enabled: form.primaryRoleIntent === 'player' && !!selectedTeamId,
+    enabled: isPlayer && !!selectedTeamId,
     staleTime: 30_000,
   });
 
@@ -139,9 +154,6 @@ const OnboardingPage = () => {
   }
 
   if (!needsOnboarding) return <Navigate to={isAdmin ? '/ops' : redirectTarget} replace />;
-
-  const isFan = form.primaryRoleIntent === 'fan';
-  const isPlayer = form.primaryRoleIntent === 'player';
 
   if (coachSubmitted) {
     return (
@@ -237,7 +249,7 @@ const OnboardingPage = () => {
         await refresh();
         navigate(isAdmin ? '/ops' : redirectTarget);
       } else {
-        // Phase 4: If Player, first link to team / claim roster identity
+        // If Player (Free or Premium), link to team / claim roster identity
         if (isPlayer) {
           try {
             await apiFetch<{ ok: boolean; data?: unknown }>('/api/player/claim-or-join-team', {
@@ -267,7 +279,7 @@ const OnboardingPage = () => {
           userId: user.id,
           displayName: form.displayName,
           fullName: form.fullName,
-          primaryRoleIntent: form.primaryRoleIntent,
+          primaryRoleIntent: isPlayer ? 'player' : form.primaryRoleIntent,
           preferredLeague: form.preferredLeague,
           bio: form.bio,
           avatarFile: form.avatarFile,
@@ -276,7 +288,7 @@ const OnboardingPage = () => {
 
         if (form.primaryRoleIntent === 'coach') {
           setCoachSubmitted(true);
-        } else if (form.primaryRoleIntent === 'player') {
+        } else if (isPlayerPremium) {
           navigate('/billing?checkout=1');
         } else {
           navigate(isAdmin ? '/ops' : redirectTarget);
@@ -352,27 +364,69 @@ const OnboardingPage = () => {
                       className="mt-0.5 accent-primary"
                     />
                     <div className="flex-1">
-                      <div className="text-sm font-semibold">{opt.label}</div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold">{opt.label}</span>
+                        {opt.badge && (
+                          <span
+                            className={`text-[10px] uppercase px-2 py-0.5 rounded-full border ${
+                              opt.badgeColor ?? 'bg-white/10 text-white/80 border-white/20'
+                            }`}
+                          >
+                            {opt.badge}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground mt-0.5">{opt.description}</div>
                     </div>
                   </label>
 
-                  {/* Section 3a.4: Decouple pricing display into expandable disclosure */}
-                  {opt.value === 'player' && (
+                  {/* Free vs Paid Player Plan Comparison Disclosure */}
+                  {(opt.value === 'player' || opt.value === 'player_free') && form.primaryRoleIntent === opt.value && (
                     <details
                       className="mt-2.5 text-xs text-muted-foreground border-t border-border/40 pt-2"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <summary className="font-semibold text-primary hover:text-primary/80 cursor-pointer select-none flex items-center gap-1.5">
-                        <ChevronDown className="w-3.5 h-3.5 inline" /> What&apos;s included ($6.99 CAD/month + GST)
+                        <ChevronDown className="w-3.5 h-3.5 inline" /> Compare Free vs Premium Player ($6.99 CAD/season)
                       </summary>
-                      <ul className="list-disc list-inside mt-2 space-y-1 text-[11px] text-muted-foreground pl-1 leading-relaxed">
-                        <li>Player profile & verified career box score stats across all games</li>
-                        <li>Live box score recognition & season leaderboard rankings</li>
-                        <li>High-definition highlight clip downloads & MVP awards eligibility</li>
-                        <li>10% discount across the official SBBL merchandise store</li>
-                        <li>Billed monthly. Cancel anytime directly in Settings.</li>
-                      </ul>
+                      
+                      <div className="mt-3 p-3 bg-black/40 border border-border/60 rounded-sm space-y-2">
+                        <div className="grid grid-cols-3 gap-2 pb-1.5 border-b border-border/50 font-semibold text-[11px]">
+                          <span className="text-muted-foreground">Feature</span>
+                          <span className="text-center text-foreground">Free Roster</span>
+                          <span className="text-center text-primary">Premium ($6.99/season)</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[11px] items-center">
+                          <span className="text-muted-foreground">Team Roster Registration</span>
+                          <span className="text-center text-success flex items-center justify-center gap-1"><Check className="w-3 h-3" /> Yes</span>
+                          <span className="text-center text-success flex items-center justify-center gap-1"><Check className="w-3 h-3" /> Yes</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[11px] items-center">
+                          <span className="text-muted-foreground">Basic Box Score Listing</span>
+                          <span className="text-center text-success flex items-center justify-center gap-1"><Check className="w-3 h-3" /> Yes</span>
+                          <span className="text-center text-success flex items-center justify-center gap-1"><Check className="w-3 h-3" /> Yes</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[11px] items-center">
+                          <span className="text-muted-foreground">Player Profile & Custom Bio</span>
+                          <span className="text-center text-muted-foreground/60">—</span>
+                          <span className="text-center text-primary font-medium flex items-center justify-center gap-1"><Sparkles className="w-3 h-3" /> Full Profile</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[11px] items-center">
+                          <span className="text-muted-foreground">Career Stats & Leaderboards</span>
+                          <span className="text-center text-muted-foreground/60">—</span>
+                          <span className="text-center text-primary font-medium flex items-center justify-center gap-1"><Sparkles className="w-3 h-3" /> Full Analytics</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[11px] items-center">
+                          <span className="text-muted-foreground">HD Highlight Video Downloads</span>
+                          <span className="text-center text-muted-foreground/60">—</span>
+                          <span className="text-center text-primary font-medium flex items-center justify-center gap-1"><Sparkles className="w-3 h-3" /> Unlimited</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[11px] items-center">
+                          <span className="text-muted-foreground">Merch & Custom Jersey Discount</span>
+                          <span className="text-center text-muted-foreground/60">—</span>
+                          <span className="text-center text-primary font-medium flex items-center justify-center gap-1"><Sparkles className="w-3 h-3" /> 10% Off</span>
+                        </div>
+                      </div>
                     </details>
                   )}
                 </div>
@@ -589,16 +643,23 @@ const OnboardingPage = () => {
           >
             {submitting
               ? 'Saving…'
-              : form.primaryRoleIntent === 'player'
-              ? 'Continue to Player Registration →'
+              : isPlayerPremium
+              ? 'Continue to Season Pass Checkout ($6.99 CAD) →'
+              : isPlayer
+              ? 'Complete Free Roster Registration →'
               : form.primaryRoleIntent === 'coach'
               ? 'Submit Coach Request →'
               : 'Finish Setup →'}
           </button>
 
-          {form.primaryRoleIntent === 'player' && (
+          {isPlayerPremium && (
             <p className="text-xs text-muted-foreground text-center -mt-2">
-              You&apos;ll be taken to checkout after saving your profile. $6.99 CAD/month + 5% GST. Cancel any time.
+              You&apos;ll be taken to Stripe checkout. $6.99 CAD per season + 5% GST. One-time payment per season pass.
+            </p>
+          )}
+          {form.primaryRoleIntent === 'player_free' && (
+            <p className="text-xs text-muted-foreground text-center -mt-2">
+              Free roster registration. You can upgrade to Player Premium ($6.99/season) anytime in Billing.
             </p>
           )}
         </form>

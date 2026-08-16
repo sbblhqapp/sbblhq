@@ -78,23 +78,25 @@ function renderOnboarding() {
   );
 }
 
-describe('OnboardingPage — Phase 3a & Phase 4', () => {
+describe('OnboardingPage — Free vs Premium Player Options', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders decoupled pricing disclosure under Player option without breaking selection', async () => {
+  it('renders both Free Player Roster and Player Premium ($6.99 CAD/season) with comparison disclosure', async () => {
     renderOnboarding();
 
-    expect(screen.getByText(/^Player$/i)).toBeInTheDocument();
-    expect(screen.getByText(/What's included \(\$6\.99 CAD\/month \+ GST\)/i)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Player \(Free Roster\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Player Premium/i })).toBeInTheDocument();
+    expect(screen.getByText(/\$6\.99 CAD \/ season/i)).toBeInTheDocument();
+    expect(screen.getByText(/Compare Free vs Premium Player \(\$6\.99 CAD\/season\)/i)).toBeInTheDocument();
   });
 
-  it('renders team picker and unclaimed player cards when Player role is selected', async () => {
+  it('allows registering as Free Player without navigating to Stripe billing checkout', async () => {
     renderOnboarding();
 
-    // Select Player role
-    fireEvent.click(screen.getByText(/^Player$/i));
+    // Select Player (Free Roster) role
+    fireEvent.click(screen.getByRole('radio', { name: /Player \(Free Roster\)/i }));
 
     // Fill display name and full name
     fireEvent.change(screen.getByPlaceholderText(/How you appear in the app/i), {
@@ -104,25 +106,59 @@ describe('OnboardingPage — Phase 3a & Phase 4', () => {
       target: { value: 'JR Founder' },
     });
 
-    // Verify team dropdown appears and option is rendered
+    // Select team Montanyosa
     const teamSelect = (await screen.findByRole('combobox', { name: /Select Your Team/i })) as HTMLSelectElement;
-    expect(teamSelect).toBeInTheDocument();
     await screen.findByRole('option', { name: 'Montanyosa' });
-
-    // Select team Montanyosa with both value assignment and synthetic change event for jsdom compatibility
     teamSelect.value = 'team-1';
     fireEvent.change(teamSelect, { target: { value: 'team-1' } });
 
-    // Verify unclaimed player card appears via data-testid
+    // Claim existing player
     const playerCard = await screen.findByTestId('claim-player-player-1');
-    expect(playerCard).toBeInTheDocument();
-    expect(screen.getByTestId('add-as-new-player')).toBeInTheDocument();
-
-    // Click to claim existing player
     fireEvent.click(playerCard);
 
     // Submit form
-    const submitBtn = screen.getByRole('button', { name: /Continue to Player Registration/i });
+    const submitBtn = screen.getByRole('button', { name: /Complete Free Roster Registration/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith(
+        '/api/player/claim-or-join-team',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"mode":"claim"'),
+        }),
+      );
+      expect(saveOnboarding).toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith('/live');
+    });
+  });
+
+  it('allows registering as Player Premium and navigates to Season Pass checkout ($6.99 CAD)', async () => {
+    renderOnboarding();
+
+    // Select Player Premium role
+    fireEvent.click(screen.getByRole('radio', { name: /Player Premium/i }));
+
+    // Fill display name and full name
+    fireEvent.change(screen.getByPlaceholderText(/How you appear in the app/i), {
+      target: { value: 'JR Courtside' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Your legal name/i), {
+      target: { value: 'JR Founder' },
+    });
+
+    // Select team Montanyosa
+    const teamSelect = (await screen.findByRole('combobox', { name: /Select Your Team/i })) as HTMLSelectElement;
+    await screen.findByRole('option', { name: 'Montanyosa' });
+    teamSelect.value = 'team-1';
+    fireEvent.change(teamSelect, { target: { value: 'team-1' } });
+
+    // Claim existing player
+    const playerCard = await screen.findByTestId('claim-player-player-1');
+    fireEvent.click(playerCard);
+
+    // Submit form
+    const submitBtn = screen.getByRole('button', { name: /Continue to Season Pass Checkout \(\$6\.99 CAD\)/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

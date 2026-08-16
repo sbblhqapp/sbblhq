@@ -44,6 +44,7 @@ export default function OverlayControlPage() {
     queryKey: ['overlay-control', gameId],
     queryFn: () => fetchOverlay(gameId!),
     refetchInterval: 1500,
+    refetchIntervalInBackground: false,
     enabled: !!gameId,
   });
 

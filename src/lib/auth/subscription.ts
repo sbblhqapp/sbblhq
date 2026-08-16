@@ -1,8 +1,9 @@
 import { AppRole } from '@/lib/auth/roles';
 import { ENTITLEMENT } from '@/lib/constants/ENTITLEMENT_CONSTANTS';
 
-/** Player membership: $6.99 CAD / month recurring subscription (before tax) */
+/** Player premium membership: $6.99 CAD / season pass (before tax) */
 export const PLAYER_REGISTRATION_PRICE_CAD = 6.99;
+export const PLAYER_SEASON_PRICE_CAD = 6.99;
 
 /**
  * Alberta applies only federal GST (5%). No PST.
@@ -41,5 +42,5 @@ export function shouldShowMinimalStats(role: AppRole, subscriptionEndsAt: string
   return !hasPremiumPlayerAccess(role, subscriptionEndsAt, now);
 }
 
-/** 10% discount for active player subscribers on store items */
+/** 10% discount for active player premium members on store items */
 export const PLAYER_STORE_DISCOUNT_PERCENT = 10;

@@ -9,10 +9,33 @@ export type HandlerCtx = {
 
 export type Handler = (ctx: HandlerCtx) => Promise<Response>;
 
-export function json(data: unknown, status = 200) {
+/**
+ * Cloudflare Edge Caching Header Presets:
+ * Slashes database Disk IO by caching responses at the Cloudflare edge.
+ * - STATIC: For immutable or rarely changing assets (leagues, config, products, media).
+ * - FREQUENT: For moderately changing data (teams, schedule, digest, sponsors, unclaimed players).
+ * - REALTIME: For dynamic live-game read data (scores, live standings, overlay state, player game stats).
+ * - PRIVATE_NO_CACHE: For authenticated or mutation endpoints.
+ */
+export const CACHE_HEADERS = {
+  STATIC: {
+    "cache-control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
+  },
+  FREQUENT: {
+    "cache-control": "public, max-age=15, s-maxage=60, stale-while-revalidate=120",
+  },
+  REALTIME: {
+    "cache-control": "public, max-age=1, s-maxage=3, stale-while-revalidate=10",
+  },
+  PRIVATE_NO_CACHE: {
+    "cache-control": "private, no-cache, no-store, must-revalidate",
+  },
+};
+
+export function json(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: { "content-type": "application/json; charset=utf-8", ...headers },
   });
 }
 

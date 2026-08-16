@@ -20,6 +20,7 @@ export default function ScorekeeperPage() {
     queryKey: ['scorekeeper', gameId],
     queryFn: () => fetchOverlay(gameId!),
     refetchInterval: 2000,
+    refetchIntervalInBackground: false,
     enabled: !!gameId,
     retry: false,
   });

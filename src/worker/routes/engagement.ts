@@ -25,7 +25,7 @@
  */
 
 import type { HandlerCtx } from "../shared";
-import { json } from "../shared";
+import { json, CACHE_HEADERS } from "../shared";
 
 function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -90,7 +90,7 @@ export async function handlePublicPollsList({ req, admin }: HandlerCtx) {
   if (gameId && isUuid(gameId)) q = q.eq("game_id", gameId);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return json({ ok: true, data });
+  return json({ ok: true, data }, 200, CACHE_HEADERS.REALTIME);
 }
 
 export async function handlePublicPollResults({ admin, params }: HandlerCtx) {
@@ -124,7 +124,7 @@ export async function handlePublicPollResults({ admin, params }: HandlerCtx) {
     poll,
     total_votes: total,
     tallies,
-  });
+  }, 200, CACHE_HEADERS.REALTIME);
 }
 
 export async function handlePublicEngagementLeaderboard({ admin }: HandlerCtx) {
@@ -132,7 +132,7 @@ export async function handlePublicEngagementLeaderboard({ admin }: HandlerCtx) {
     p_limit: 25,
   });
   if (error) throw new Error(error.message);
-  return json({ ok: true, data });
+  return json({ ok: true, data }, 200, CACHE_HEADERS.FREQUENT);
 }
 
 // ── Authenticated: vote ───────────────────────────────────────────────────

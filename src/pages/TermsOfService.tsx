@@ -42,10 +42,10 @@ export default function TermsOfService() {
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-white">4. Subscriptions &amp; Payments</h2>
           <ul className="list-disc list-inside space-y-1 text-neutral-300">
-            <li>Player registration is available for $6.99 CAD/month via Stripe.</li>
+            <li>Free roster player registration is available at no cost for all league participants.</li>
+            <li>Player Premium Season Pass is available for $6.99 CAD/season via Stripe.</li>
             <li>Pay-per-view livestream access is available for individual games.</li>
             <li>All prices include applicable taxes (e.g., Alberta GST at 5%).</li>
-            <li>Subscriptions renew automatically unless cancelled before the renewal date.</li>
             <li>Refunds are handled in accordance with Stripe&apos;s refund policies and at our discretion.</li>
           </ul>
         </section>

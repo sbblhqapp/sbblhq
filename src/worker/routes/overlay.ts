@@ -351,7 +351,7 @@ export async function handleOverlayClock(ctx: HandlerCtx) {
 // body: { side: 'home' | 'away', delta?: 1|2|3|-1, set?: number, event?: string }
 // ──────────────────────────────────────────────────────────────────────────
 export async function handleOverlayScore(ctx: HandlerCtx) {
-  await requireOverlayAdmin(ctx);
+  const userId = await requireOverlayAdmin(ctx);
   const gameId = ctx.params.gameId ?? "";
   if (!gameId || !isUuid(gameId)) {
     return json({ ok: false, error: "invalid_game_id" }, 400);
@@ -364,6 +364,7 @@ export async function handleOverlayScore(ctx: HandlerCtx) {
     delta?: number;
     set?: number;
     event?: string;
+    idempotencyKey?: string;
   };
   try {
     body = (await ctx.req.json()) as typeof body;
@@ -374,6 +375,32 @@ export async function handleOverlayScore(ctx: HandlerCtx) {
   if (body.side !== "home" && body.side !== "away") {
     return json({ ok: false, error: "invalid_side" }, 400);
   }
+
+  const idempotencyKey =
+    ctx.req.headers.get("x-idempotency-key") ||
+    body.idempotencyKey ||
+    null;
+
+  // 1. Try atomic idempotent database RPC for deltas
+  if (typeof body.delta === "number" && [-3, -2, -1, 1, 2, 3].includes(body.delta)) {
+    const { data: rpcRes, error: rpcErr } = await ctx.admin.rpc(
+      "fn_atomic_adjust_overlay_score",
+      {
+        p_game_id: gameId,
+        p_team_side: body.side,
+        p_delta: body.delta,
+        p_event_text: body.event ? String(body.event).slice(0, 160) : null,
+        p_idempotency_key: idempotencyKey,
+        p_actor_id: userId,
+      },
+    );
+
+    if (!rpcErr && rpcRes && typeof rpcRes === "object" && "overlay" in rpcRes) {
+      return json({ ok: true, overlay: (rpcRes as { overlay: unknown }).overlay });
+    }
+  }
+
+  // 2. Fallback / direct set path
   const col = body.side === "home" ? "home_score" : "away_score";
   const currentVal = Number(current[col] ?? 0);
   let newVal = currentVal;
@@ -381,7 +408,7 @@ export async function handleOverlayScore(ctx: HandlerCtx) {
     newVal = Math.max(0, Math.floor(body.set));
   } else if (
     typeof body.delta === "number" &&
-    [-2, -1, 1, 2, 3].includes(body.delta)
+    [-3, -2, -1, 1, 2, 3].includes(body.delta)
   ) {
     newVal = Math.max(0, currentVal + body.delta);
   } else {

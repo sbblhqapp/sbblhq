@@ -23,6 +23,12 @@ import {
   handlePublicPotg as _handlePublicPotg,
 } from "./routes/public";
 import {
+  handlePublicLeagues,
+  handlePublicTeamsByLeague,
+  handlePublicUnclaimedPlayers,
+} from "./routes/teams";
+import { handlePlayerClaimOrJoinTeam } from "./routes/player-claim";
+import {
   handleQoeIngest,
   handleQoeHealthReport,
 } from "./routes/stream-qoe";
@@ -7217,6 +7223,10 @@ const routes: Array<{ method: string; path: string; handler: Handler }> = [
   { method: "GET", path: "/api/public/home", handler: handlePublicHome },
   { method: "GET", path: "/api/public/schedule", handler: handlePublicSchedule },
   { method: "GET", path: "/api/public/potg", handler: handlePublicPotg },
+  { method: "GET", path: "/api/public/leagues", handler: handlePublicLeagues },
+  { method: "GET", path: "/api/public/teams-by-league", handler: handlePublicTeamsByLeague },
+  { method: "GET", path: "/api/public/unclaimed-players", handler: handlePublicUnclaimedPlayers },
+  { method: "POST", path: "/api/player/claim-or-join-team", handler: handlePlayerClaimOrJoinTeam },
   { method: "GET", path: "/api/teams", handler: handleTeamsList },
   {
     method: "GET",

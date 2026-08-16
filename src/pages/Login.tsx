@@ -1,10 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { signInWithPassword, signUpWithPassword } from '@/lib/api/auth';
 import { useAuth } from '@/hooks/use-auth';
 import { useTurnstile } from '@/hooks/use-turnstile';
 import { LEAGUE_CONFIGS } from '@/lib/leagues';
-import { requireSupabaseClient } from '@/lib/supabase/client';
+import { requireSupabaseClient, getSupabaseClient } from '@/lib/supabase/client';
 import { getRuntimeConfig, getRuntimeConfigSync } from '@/lib/runtime-config';
 import { LeagueBadge } from '@/components/ui/LeagueBadge';
 import { Shield, BarChart3, Users, Zap, CheckCircle2 } from 'lucide-react';
@@ -24,6 +24,9 @@ const LoginPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
   // Google OAuth capability flag — sourced from /api/public-config so the UI
   // cannot falsely advertise the provider when Google Cloud has the OAuth
   // client in `org_internal` state or the operator has explicitly disabled it.
@@ -36,6 +39,14 @@ const LoginPage = () => {
   const { isSignedIn, needsOnboarding, configAvailable, loading } = useAuth();
   const { containerRef: turnstileRef, resolveToken, ready: captchaReady } = useTurnstile();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +161,7 @@ const LoginPage = () => {
         // AuthContext onAuthStateChange will handle the SIGNED_IN event and redirect
       } else {
         await signUpWithPassword(email, password, captchaToken);
+        setResendEmail(email);
         setMessage('Account created — check your inbox to confirm your email, then sign in.');
         setMode('signin');
         setPassword('');
@@ -262,9 +274,19 @@ const LoginPage = () => {
                 />
               </div>
               <div>
-                <label htmlFor="login-password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Password
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="login-password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Password
+                  </label>
+                  {mode === 'signin' && (
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                  )}
+                </div>
                 <input
                   id="login-password"
                   type="password"
@@ -315,6 +337,12 @@ const LoginPage = () => {
                   </p>
                 )}
               </div>
+              {!captchaReady && (
+                <p className="text-[11px] text-muted-foreground text-center animate-pulse">
+                  Verifying you&apos;re human…
+                </p>
+              )}
+
               <button
                 type="submit"
                 disabled={!canSubmit}
@@ -329,9 +357,50 @@ const LoginPage = () => {
             )}
 
             {message && (
-              <div className="mt-4 flex items-start gap-2 text-success">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <p className="text-sm">{message}</p>
+              <div className="mt-4 p-4 rounded-sm border border-success/30 bg-success/5 space-y-2">
+                <div className="flex items-start gap-2 text-success">
+                  <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm">{message}</p>
+                </div>
+                {resendEmail && (
+                  <div className="pt-2 border-t border-success/20 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Didn&apos;t get the email?</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (resendCooldown > 0 || resending || !resendEmail) return;
+                        setResending(true);
+                        try {
+                          const supabase = getSupabaseClient();
+                          if (!supabase) throw new Error('Supabase client unavailable');
+                          const { error: resendErr } = await supabase.auth.resend({
+                            type: 'signup',
+                            email: resendEmail,
+                          });
+                          if (resendErr) {
+                            setError(resendErr.message);
+                          } else {
+                            setMessage('Confirmation email resent. Please check your inbox.');
+                            setResendCooldown(30);
+                          }
+                        } catch (err) {
+                          const raw = err instanceof Error ? err.message : 'Failed to resend confirmation email';
+                          setError(raw);
+                        } finally {
+                          setResending(false);
+                        }
+                      }}
+                      disabled={resendCooldown > 0 || resending}
+                      className="text-xs font-semibold text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      {resending
+                        ? 'Resending…'
+                        : resendCooldown > 0
+                          ? `Resend in ${resendCooldown}s`
+                          : 'Resend confirmation'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

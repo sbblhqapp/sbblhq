@@ -464,74 +464,88 @@ const OnboardingPage = () => {
               )}
 
               {/* Roster Claim or Create Selector */}
-              {selectedTeamId && unclaimedPlayers.length > 0 && (
+              {selectedTeamId && (
                 <div className="space-y-2 pt-2 border-t border-border/40">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-primary block">
-                    Is one of these you?
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    A coach or scorekeeper previously recorded these roster players courtside.
-                    Select your name to claim your stats, or choose to add yourself as a new player.
-                  </p>
+                  {unclaimedQuery.isLoading ? (
+                    <p className="text-xs text-muted-foreground animate-pulse py-2">
+                      Loading team roster…
+                    </p>
+                  ) : unclaimedPlayers.length > 0 ? (
+                    <>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-primary block">
+                        Is one of these you?
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        A coach or scorekeeper previously recorded these roster players courtside.
+                        Select your name to claim your stats, or choose to add yourself as a new player.
+                      </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                    {unclaimedPlayers.map((p) => {
-                      const isSelected = claimMode === 'claim' && selectedPlayerId === p.id;
-                      return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                        {unclaimedPlayers.map((p) => {
+                          const isSelected = claimMode === 'claim' && selectedPlayerId === p.id;
+                          return (
+                            <div
+                              key={p.id}
+                              data-testid={`claim-player-${p.id}`}
+                              onClick={() => {
+                                setClaimMode('claim');
+                                setSelectedPlayerId(p.id);
+                                if (!form.displayName) {
+                                  setForm((prev) => ({ ...prev, displayName: p.display_name }));
+                                }
+                                if (p.jersey_number !== null) {
+                                  setJerseyNumber(String(p.jersey_number));
+                                }
+                              }}
+                              className={`p-3 rounded-sm border cursor-pointer flex items-center justify-between transition-colors ${
+                                isSelected
+                                  ? 'border-primary bg-primary/10'
+                                  : 'border-border bg-secondary/40 hover:border-primary/40'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <UserCheck className={`w-4 h-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                                <div>
+                                  <p className="text-xs font-bold">{p.display_name}</p>
+                                  {p.jersey_number !== null && (
+                                    <p className="text-[10px] text-muted-foreground">Jersey #{p.jersey_number}</p>
+                                  )}
+                                </div>
+                              </div>
+                              {isSelected && <Check className="w-4 h-4 text-primary" />}
+                            </div>
+                          );
+                        })}
+
+                        {/* Explicit Option to Add as New */}
                         <div
-                          key={p.id}
+                          data-testid="add-as-new-player"
                           onClick={() => {
-                            setClaimMode('claim');
-                            setSelectedPlayerId(p.id);
-                            if (!form.displayName) {
-                              setForm((prev) => ({ ...prev, displayName: p.display_name }));
-                            }
-                            if (p.jersey_number !== null) {
-                              setJerseyNumber(String(p.jersey_number));
-                            }
+                            setClaimMode('new');
+                            setSelectedPlayerId(null);
                           }}
                           className={`p-3 rounded-sm border cursor-pointer flex items-center justify-between transition-colors ${
-                            isSelected
+                            claimMode === 'new'
                               ? 'border-primary bg-primary/10'
                               : 'border-border bg-secondary/40 hover:border-primary/40'
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
-                            <UserCheck className={`w-4 h-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                            <UserPlus className={`w-4 h-4 ${claimMode === 'new' ? 'text-primary' : 'text-muted-foreground'}`} />
                             <div>
-                              <p className="text-xs font-bold">{p.display_name}</p>
-                              {p.jersey_number !== null && (
-                                <p className="text-[10px] text-muted-foreground">Jersey #{p.jersey_number}</p>
-                              )}
+                              <p className="text-xs font-bold">None of these</p>
+                              <p className="text-[10px] text-muted-foreground">Add me as a new player</p>
                             </div>
                           </div>
-                          {isSelected && <Check className="w-4 h-4 text-primary" />}
-                        </div>
-                      );
-                    })}
-
-                    {/* Explicit Option to Add as New */}
-                    <div
-                      onClick={() => {
-                        setClaimMode('new');
-                        setSelectedPlayerId(null);
-                      }}
-                      className={`p-3 rounded-sm border cursor-pointer flex items-center justify-between transition-colors ${
-                        claimMode === 'new'
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border bg-secondary/40 hover:border-primary/40'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <UserPlus className={`w-4 h-4 ${claimMode === 'new' ? 'text-primary' : 'text-muted-foreground'}`} />
-                        <div>
-                          <p className="text-xs font-bold">None of these</p>
-                          <p className="text-[10px] text-muted-foreground">Add me as a new player</p>
+                          {claimMode === 'new' && <Check className="w-4 h-4 text-primary" />}
                         </div>
                       </div>
-                      {claimMode === 'new' && <Check className="w-4 h-4 text-primary" />}
-                    </div>
-                  </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-1">
+                      No prior courtside records found for this team. You will be added as a new player.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

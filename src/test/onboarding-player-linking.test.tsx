@@ -111,10 +111,10 @@ describe('OnboardingPage — Phase 3a & Phase 4', () => {
     // Select team Montanyosa
     fireEvent.change(teamSelect, { target: { value: 'team-1' } });
 
-    // Verify unclaimed player card appears
-    const playerCard = await screen.findByText('JR Courtside');
+    // Verify unclaimed player card appears via data-testid
+    const playerCard = await screen.findByTestId('claim-player-player-1');
     expect(playerCard).toBeInTheDocument();
-    expect(screen.getByText('None of these')).toBeInTheDocument();
+    expect(screen.getByTestId('add-as-new-player')).toBeInTheDocument();
 
     // Click to claim existing player
     fireEvent.click(playerCard);

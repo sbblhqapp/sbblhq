@@ -243,7 +243,7 @@ test.describe('Game Statistician Courtside UX Simulation', () => {
     // PHASE 3: ROSTER EDGE CASE (WALK-ON PLAYER COURTSIDE ADD)
     // ─────────────────────────────────────────────────────────────────────────────
     // Add walk-on player #99 Jordan Blake to Vipers roster
-    const quickAddBtn = page.getByRole('button', { name: /\+ Quick Add Player/i });
+    const quickAddBtn = page.getByRole('button', { name: /\+ (Quick Add|Add Walk-On) Player/i });
     await quickAddBtn.click();
 
     await page.getByPlaceholder(/Player name/i).fill('Jordan Blake');

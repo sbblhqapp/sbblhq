@@ -12,7 +12,8 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 15_000 },
   fullyParallel: true,
-  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 2 : undefined,
+  retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL,
@@ -21,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --host 127.0.0.1 --port ${port}`,
     env: {
-      VITE_E2E_BYPASS_ADMIN: 'true'
+      VITE_E2E_BYPASS_ADMIN: 'true',
     },
     url: baseURL,
     reuseExistingServer: true,

@@ -46,7 +46,7 @@ function buildSchemaMap(): Map<string, Set<string>> {
 // auto-provisioning, import history, audit trail, ingress capture).
 const TABLE_COLUMN_CONTRACT: Record<string, string[]> = {
   profiles: ['user_id', 'display_name', 'full_name', 'created_by'],
-  players: ['user_id', 'league_id', 'team_id', 'created_by', 'merged_into', 'merged_at'],
+  players: ['user_id', 'league_id', 'team_id', 'created_by', 'merged_into', 'merged_at', 'display_name'],
   teams: ['name', 'league_id', 'season_id'],
   leagues: ['code'],
   player_game_stats: ['game_id', 'player_id'],

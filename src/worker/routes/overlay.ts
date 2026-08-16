@@ -589,6 +589,44 @@ export async function handleOverlayStatus(ctx: HandlerCtx) {
   // Ensure overlay row exists so client doesn't break
   await ensureOverlayRow(ctx, gameId);
 
+  // Synchronize overlay period_label and clock on status change
+  if (body.status === "final") {
+    await ctx.admin
+      .from("overlay_game_state")
+      .update({
+        period_label: "FINAL",
+        clock_running: false,
+        clock_seconds: 0,
+        clock_last_started_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("game_id", gameId);
+  } else if (body.status === "review_pending") {
+    await ctx.admin
+      .from("overlay_game_state")
+      .update({
+        period_label: "CORR",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("game_id", gameId);
+  } else if (body.status === "live") {
+    const { data: currentOgs } = await ctx.admin
+      .from("overlay_game_state")
+      .select("period_label")
+      .eq("game_id", gameId)
+      .maybeSingle();
+
+    if (currentOgs?.period_label === "FINAL" || currentOgs?.period_label === "CORR") {
+      await ctx.admin
+        .from("overlay_game_state")
+        .update({
+          period_label: "Q4",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("game_id", gameId);
+    }
+  }
+
   const { data: game, error } = await ctx.admin
     .from("games")
     .update({ status: body.status })

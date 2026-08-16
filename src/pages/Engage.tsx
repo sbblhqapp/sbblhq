@@ -136,6 +136,7 @@ function PollCard({
     queryKey: ['poll-results', poll.id],
     queryFn: () => fetchPollResults(poll.id),
     refetchInterval: 4000,
+    refetchIntervalInBackground: false,
   });
   const [voting, setVoting] = useState(false);
   const total = results.data?.total_votes ?? 0;

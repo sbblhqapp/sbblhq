@@ -61,6 +61,9 @@ const queryClient = new QueryClient({
       // Don't refetch on window focus — avoids thundering herd after
       // users alt-tab during a live game broadcast.
       refetchOnWindowFocus: false,
+      // Pause all polling intervals when browser tab is inactive/backgrounded
+      // Slashes Supabase Disk IO and prevents idle client resource drain.
+      refetchIntervalInBackground: false,
     },
     mutations: {
       // Surface mutation errors so UI can display them.

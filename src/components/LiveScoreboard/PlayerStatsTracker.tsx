@@ -73,6 +73,7 @@ export const PlayerStatsTracker: React.FC<PlayerStatsTrackerProps> = ({
     queryFn: () => fetchGamePlayerStats(gameId),
     enabled: Boolean(gameId),
     refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   // Real-time multi-admin aggregation: subscribe to player_game_stats and overlay_game_state

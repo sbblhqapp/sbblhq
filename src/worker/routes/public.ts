@@ -5,7 +5,7 @@
  * The main Worker index.ts still references these via the route table.
  */
 import type { HandlerCtx } from "../shared";
-import { json, resolveLeagueIdFilter, LEAGUE_NO_MATCH } from "../shared";
+import { json, resolveLeagueIdFilter, LEAGUE_NO_MATCH, CACHE_HEADERS } from "../shared";
 
 export async function handlePublicConfig({ env }: HandlerCtx) {
   // Capability flag: tells the UI whether Google OAuth is a working sign-in
@@ -26,7 +26,7 @@ export async function handlePublicConfig({ env }: HandlerCtx) {
     supabaseUrl: env.SUPABASE_URL ?? null,
     supabasePublishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null,
     googleOAuthEnabled,
-  });
+  }, 200, CACHE_HEADERS.STATIC);
 }
 
 export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
@@ -38,7 +38,7 @@ export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
     url.searchParams.get("leagueId"),
   );
   if (leagueFilter === LEAGUE_NO_MATCH) {
-    return json({ ok: true, data: [] });
+    return json({ ok: true, data: [] }, 200, CACHE_HEADERS.FREQUENT);
   }
 
   // 1. Query upcoming / scheduled games with rich team, division, venue, and court metadata
@@ -81,7 +81,7 @@ export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
     return new Response(JSON.stringify({ ok: true, data: formatted }), {
       headers: {
         "content-type": "application/json",
-        "cache-control": "public, s-maxage=60, max-age=30",
+        ...CACHE_HEADERS.FREQUENT,
       },
     });
   }
@@ -96,7 +96,7 @@ export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
   return new Response(JSON.stringify({ ok: true, data: data ?? [] }), {
     headers: {
       "content-type": "application/json",
-      "cache-control": "public, s-maxage=60, max-age=30",
+      ...CACHE_HEADERS.FREQUENT,
     },
   });
 }
@@ -122,7 +122,7 @@ export async function handlePublicPotg({ admin }: HandlerCtx) {
   return new Response(JSON.stringify({ ok: true, data: formatted }), {
     headers: {
       "content-type": "application/json",
-      "cache-control": "public, s-maxage=30, max-age=15",
+      ...CACHE_HEADERS.FREQUENT,
     },
   });
 }
@@ -259,7 +259,7 @@ export async function handlePublicHome({ req, admin }: HandlerCtx) {
     {
       headers: {
         "content-type": "application/json",
-        "cache-control": "public, s-maxage=30, max-age=15",
+        ...CACHE_HEADERS.FREQUENT,
       },
     },
   );

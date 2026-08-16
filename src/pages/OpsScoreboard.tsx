@@ -75,6 +75,7 @@ export default function OpsScoreboardPage() {
     queryFn: () => fetchOverlay(activeGameId!),
     enabled: !!activeGameId,
     refetchInterval: 2500,
+    refetchIntervalInBackground: false,
   });
 
   const game = overlayQuery.data?.game;

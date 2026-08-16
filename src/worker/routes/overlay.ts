@@ -188,8 +188,7 @@ export async function handlePublicOverlay({ req, admin, params }: HandlerCtx) {
       status: 200,
       headers: {
         "content-type": "application/json; charset=utf-8",
-        // Overlays must reflect live state — do not cache.
-        "cache-control": "no-store, max-age=0",
+        "cache-control": "public, max-age=1, s-maxage=1, stale-while-revalidate=2",
       },
     },
   );

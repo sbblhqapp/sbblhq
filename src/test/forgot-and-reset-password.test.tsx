@@ -20,6 +20,14 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+vi.mock('@/hooks/use-turnstile', () => ({
+  useTurnstile: () => ({
+    containerRef: { current: null },
+    resolveToken: vi.fn(async () => 'turnstile-stub'),
+    ready: true,
+  }),
+}));
+
 describe('ForgotPasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();

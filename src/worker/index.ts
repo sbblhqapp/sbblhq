@@ -8,7 +8,7 @@ import { ENTITLEMENT, ENTITLEMENT_MS } from "@/lib/constants/ENTITLEMENT_CONSTAN
 import { selectPlaybackProvider } from "@/lib/playback/selectProvider";
 import { verifyPlaybackToken } from "@/lib/playback/signed-token";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { resolveLeagueId, resolveLeagueIdFilter, LEAGUE_NO_MATCH } from "./shared";
+import { resolveLeagueId, resolveLeagueIdFilter, LEAGUE_NO_MATCH, CACHE_HEADERS } from "./shared";
 import {
   mergeBeaconIntoAggregate,
   parseBeaconPayload,

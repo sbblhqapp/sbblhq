@@ -4,6 +4,7 @@
  */
 import type { HandlerCtx } from '../shared';
 import { json, resolveLeagueId } from '../shared';
+import { ensureMutation } from '../index';
 
 function requireAuth(req: Request): string {
   const userId = req.headers.get('x-sbbl-user-id-verified');
@@ -24,6 +25,7 @@ type ClaimOrJoinBody = {
 
 export async function handlePlayerClaimOrJoinTeam(ctx: HandlerCtx) {
   const { req, admin } = ctx;
+  await ensureMutation(req, ctx);
   const userId = requireAuth(req);
 
   let body: ClaimOrJoinBody;
@@ -43,6 +45,15 @@ export async function handlePlayerClaimOrJoinTeam(ctx: HandlerCtx) {
   }
   if (!displayName || typeof displayName !== 'string' || !displayName.trim()) {
     return json({ ok: false, error: 'displayName is required' }, 400);
+  }
+  if (displayName.trim().length > 100) {
+    return json({ ok: false, error: 'displayName must be between 1 and 100 characters' }, 400);
+  }
+  if (body.jerseyNumber !== undefined && body.jerseyNumber !== null && body.jerseyNumber !== '') {
+    const jNum = Number(body.jerseyNumber);
+    if (!Number.isInteger(jNum) || jNum < 0 || jNum > 99) {
+      return json({ ok: false, error: 'jerseyNumber must be an integer between 0 and 99' }, 400);
+    }
   }
   if (mode !== 'claim' && mode !== 'new') {
     return json({ ok: false, error: 'mode must be "claim" or "new"' }, 400);
@@ -81,6 +92,7 @@ export async function handlePlayerClaimOrJoinTeam(ctx: HandlerCtx) {
       .eq('id', existingPlayerId)
       .eq('team_id', teamId)
       .is('user_id', null)
+      .is('merged_into', null)
       .select('id, display_name, jersey_number, team_id, league_id, user_id')
       .maybeSingle();
 

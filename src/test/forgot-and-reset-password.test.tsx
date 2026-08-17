@@ -20,6 +20,14 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+vi.mock('@/hooks/use-turnstile', () => ({
+  useTurnstile: () => ({
+    containerRef: { current: null },
+    resolveToken: vi.fn(async () => 'turnstile-stub'),
+    ready: true,
+  }),
+}));
+
 describe('ForgotPasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -69,7 +77,7 @@ describe('ResetPasswordPage', () => {
       </BrowserRouter>,
     );
 
-    const newPasswordInput = screen.getByLabelText(/^new password$/i);
+    const newPasswordInput = await screen.findByLabelText(/^new password$/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm new password/i);
     const submitBtn = screen.getByRole('button', { name: /update password/i });
 

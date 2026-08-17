@@ -1,5 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PLAYER_REGISTRATION_PRICE_CAD } from '@/lib/auth/subscription';
 
 export default function TermsOfService() {
   return (
@@ -43,7 +44,7 @@ export default function TermsOfService() {
           <h2 className="text-xl font-semibold text-white">4. Subscriptions &amp; Payments</h2>
           <ul className="list-disc list-inside space-y-1 text-neutral-300">
             <li>Free roster player registration is available at no cost for all league participants.</li>
-            <li>Player Premium Season Pass is available for $6.99 CAD/season via Stripe.</li>
+            <li>Player Premium Season Pass is available for ${PLAYER_REGISTRATION_PRICE_CAD.toFixed(2)} CAD/season via Stripe.</li>
             <li>Pay-per-view livestream access is available for individual games.</li>
             <li>All prices include applicable taxes (e.g., Alberta GST at 5%).</li>
             <li>Refunds are handled in accordance with Stripe&apos;s refund policies and at our discretion.</li>

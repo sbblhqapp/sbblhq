@@ -23,7 +23,7 @@
 import type { HandlerCtx } from "../shared";
 import { json } from "../shared";
 
-const OVERLAY_SELECT = "*";
+const OVERLAY_SELECT = "id, game_id, home_score, away_score, period_label, clock_seconds, clock_running, clock_last_started_at, foul_home, foul_away, timeout_home, timeout_away, possession, status_label, is_halftime, is_overtime, is_final, created_at, updated_at";
 
 function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -113,6 +113,8 @@ export async function handlePublicOverlay({ req, admin, params }: HandlerCtx) {
     })(),
   ]);
 
+  const safeOverlayData = overlayRow ? (({ updated_by, ...rest }) => rest)(overlayRow as Record<string, unknown>) : null;
+
   if (!gameRow) {
     return json({ ok: false, error: "game_not_found" }, 404);
   }
@@ -157,13 +159,13 @@ export async function handlePublicOverlay({ req, admin, params }: HandlerCtx) {
     };
   }
 
-  const overlay = overlayRow
+  const overlay = safeOverlayData
     ? {
-        ...overlayRow,
+        ...safeOverlayData,
         // When clock is running, project live remaining seconds so
         // the overlay animates smoothly even when DB writes are batched.
         live_clock_seconds: (() => {
-          const o = overlayRow as Record<string, unknown>;
+          const o = safeOverlayData as Record<string, unknown>;
           if (!o.clock_running || !o.clock_last_started_at) {
             return Number(o.clock_seconds ?? 0);
           }

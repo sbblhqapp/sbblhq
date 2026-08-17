@@ -49,7 +49,7 @@ export default function ScorekeeperPage() {
     );
   }
 
-  if (query.isError || !game) {
+  if (!query.data && !query.isLoading && (query.isError || !game)) {
     return (
       <div className="container py-6 max-w-2xl font-['Space_Grotesk'] text-[#F5F5F0]">
         <div className="rounded-xl border border-[#222222] bg-[#111111] p-6 text-center space-y-3">

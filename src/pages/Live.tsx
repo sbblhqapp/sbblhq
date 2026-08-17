@@ -877,7 +877,11 @@ const LivePage = () => {
 
     void fetchStatus();
     // Poll every 15 seconds for viewers
-    const id = setInterval(fetchStatus, 15000);
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchStatus();
+      }
+    }, 15000);
     return () => { active = false; clearInterval(id); };
   }, [isSuperAdmin]);
 
@@ -1051,7 +1055,11 @@ const LivePage = () => {
           .subscribe()
       : null;
 
-    const id = setInterval(fetchComments, 30_000);
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchComments();
+      }
+    }, 30_000);
     return () => {
       active = false;
       clearInterval(id);

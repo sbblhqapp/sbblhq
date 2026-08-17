@@ -10,7 +10,7 @@ const ResetPasswordPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [hasSession, setHasSession] = useState(true);
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -18,7 +18,9 @@ const ResetPasswordPage = () => {
 
     // Check if recovery session is present
     void supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
+      if (data?.session) {
+        setHasSession(true);
+      } else {
         setHasSession(false);
       }
     });
@@ -90,16 +92,18 @@ const ResetPasswordPage = () => {
           Enter and confirm your new account password.
         </p>
 
-        {!hasSession && !success && (
+        {hasSession === null ? (
+          <div className="mt-6 flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : hasSession === false ? (
           <div className="mt-4 panel p-4 border-warning/30 bg-warning/5">
             <p className="text-sm font-medium text-warning">Password Recovery Session Missing</p>
             <p className="text-xs text-muted-foreground mt-1">
               Please click the password reset link directly from your email to set a new password.
             </p>
           </div>
-        )}
-
-        {success ? (
+        ) : success ? (
           <div className="mt-6 space-y-4">
             <div className="p-4 rounded-sm border border-success/30 bg-success/10 flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />

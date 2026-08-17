@@ -1,11 +1,12 @@
 import { Mail, MessageCircle, FileText, ChevronDown, ChevronUp, Shield, ScrollText } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PLAYER_REGISTRATION_PRICE_CAD } from '@/lib/auth/subscription';
 
 const faqs = [
   {
     q: 'How do I register as a player?',
-    a: 'Sign in, then complete Onboarding to join your team roster for free. To unlock full player profiles, career stats, leaderboards, and highlight downloads, activate the Player Premium Season Pass ($6.99 CAD/season) in Billing & Payments.',
+    a: `Sign in, then complete Onboarding to join your team roster for free. To unlock full player profiles, career stats, leaderboards, and highlight downloads, activate the Player Premium Season Pass ($${PLAYER_REGISTRATION_PRICE_CAD.toFixed(2)} CAD/season) in Billing & Payments.`,
   },
   {
     q: 'How does the livestream paywall work?',

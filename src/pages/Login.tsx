@@ -52,7 +52,8 @@ const LoginPage = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const redirectTo = urlParams.get('redirect');
+  const rawRedirect = urlParams.get('redirect');
+  const redirectTo = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : null;
   const intentParam = urlParams.get('intent');
 
   useEffect(() => {

@@ -6,6 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { LEAGUE_REGISTRY } from '@/lib/leagues';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api/client';
+import { PLAYER_REGISTRATION_PRICE_CAD } from '@/lib/auth/subscription';
 import { UserCheck, UserPlus, Check, ChevronDown, Sparkles, ShieldCheck } from 'lucide-react';
 
 type RoleIntent = 'fan' | 'player_free' | 'player' | 'coach';
@@ -27,7 +28,7 @@ const ROLE_OPTIONS: { value: RoleIntent; label: string; badge?: string; badgeCol
   {
     value: 'player',
     label: 'Player Premium',
-    badge: '$6.99 CAD / season',
+    badge: `$${PLAYER_REGISTRATION_PRICE_CAD.toFixed(2)} CAD / season`,
     badgeColor: 'bg-primary/20 text-primary border-primary/40 font-bold',
     description: 'Full season pass: verified career stats, leaderboards, player profile, highlight downloads, and 10% store discount.',
   },
@@ -387,14 +388,14 @@ const OnboardingPage = () => {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <summary className="font-semibold text-primary hover:text-primary/80 cursor-pointer select-none flex items-center gap-1.5">
-                        <ChevronDown className="w-3.5 h-3.5 inline" /> Compare Free vs Premium Player ($6.99 CAD/season)
+                        <ChevronDown className="w-3.5 h-3.5 inline" /> Compare Free vs Premium Player (${PLAYER_REGISTRATION_PRICE_CAD.toFixed(2)} CAD/season)
                       </summary>
                       
                       <div className="mt-3 p-3 bg-black/40 border border-border/60 rounded-sm space-y-2">
                         <div className="grid grid-cols-3 gap-2 pb-1.5 border-b border-border/50 font-semibold text-[11px]">
                           <span className="text-muted-foreground">Feature</span>
                           <span className="text-center text-foreground">Free Roster</span>
-                          <span className="text-center text-primary">Premium ($6.99/season)</span>
+                          <span className="text-center text-primary">Premium (${PLAYER_REGISTRATION_PRICE_CAD.toFixed(2)}/season)</span>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-[11px] items-center">
                           <span className="text-muted-foreground">Team Roster Registration</span>
@@ -644,7 +645,7 @@ const OnboardingPage = () => {
             {submitting
               ? 'Saving…'
               : isPlayerPremium
-              ? 'Continue to Season Pass Checkout ($6.99 CAD) →'
+              ? `Continue to Season Pass Checkout ($${PLAYER_REGISTRATION_PRICE_CAD.toFixed(2)} CAD) →`
               : isPlayer
               ? 'Complete Free Roster Registration →'
               : form.primaryRoleIntent === 'coach'
@@ -654,12 +655,12 @@ const OnboardingPage = () => {
 
           {isPlayerPremium && (
             <p className="text-xs text-muted-foreground text-center -mt-2">
-              You&apos;ll be taken to Stripe checkout. $6.99 CAD per season + 5% GST. One-time payment per season pass.
+              You&apos;ll be taken to Stripe checkout. ${PLAYER_REGISTRATION_PRICE_CAD.toFixed(2)} CAD per season + 5% GST. One-time payment per season pass.
             </p>
           )}
           {form.primaryRoleIntent === 'player_free' && (
             <p className="text-xs text-muted-foreground text-center -mt-2">
-              Free roster registration. You can upgrade to Player Premium ($6.99/season) anytime in Billing.
+              Free roster registration. You can upgrade to Player Premium (${PLAYER_REGISTRATION_PRICE_CAD.toFixed(2)}/season) anytime in Billing.
             </p>
           )}
         </form>

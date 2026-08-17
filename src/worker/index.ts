@@ -109,6 +109,7 @@ import {
 } from "./routes/ops-upload";
 import { parseStripeSignature, constantTimeEqualHex } from "./stripe-utils";
 export { parseStripeSignature, constantTimeEqualHex };
+import { PLAYER_REGISTRATION_PRICE_CAD } from "@/lib/auth/subscription";
 
 export type HandlerCtx = {
   req: Request;
@@ -3742,7 +3743,6 @@ async function handleTeamsList({ req, admin }: HandlerCtx) {
           const name = splitProfileName(profile);
           return {
             id: String(p.id),
-            user_id: p.user_id,
             jersey_number: p.jersey_number,
             position: p.position,
             first_name: name.first_name,
@@ -3765,7 +3765,6 @@ async function handleTeamsList({ req, admin }: HandlerCtx) {
           const name = splitProfileName(profile);
           return {
             id: m.id,
-            user_id: m.user_id,
             role: m.role,
             first_name: name.first_name,
             last_name: name.last_name,
@@ -6069,7 +6068,7 @@ async function handleStreamViewerCount(ctx: HandlerCtx) {
   const gameId = ctx.params.gameId;
   if (!gameId) return json({ ok: false, error: "game_id_required" }, 400);
   const activeEntitledViewerCount = await getActiveViewerCount(ctx.admin, gameId);
-  return json({ ok: true, gameId, activeEntitledViewerCount });
+  return json({ ok: true, gameId, activeEntitledViewerCount }, 200, CACHE_HEADERS.REALTIME);
 }
 
 function getSafeRedirectUrl(
@@ -6867,7 +6866,7 @@ async function handlePlayerCheckout({ req, env, admin }: HandlerCtx) {
       "line_items[0][price_data][product_data][name]": "SBBL Player Premium Membership (Season Pass)",
       "line_items[0][price_data][product_data][description]":
         "Season player registration. Includes verified stats, leaderboards, player profile, highlight downloads, and 10% store discount.",
-      "line_items[0][price_data][unit_amount]": "699", // $6.99 CAD before tax
+      "line_items[0][price_data][unit_amount]": String(Math.round(PLAYER_REGISTRATION_PRICE_CAD * 100)),
       "line_items[0][price_data][tax_behavior]": "exclusive", // GST added on top at checkout
       "line_items[0][quantity]": "1",
       // Automatic tax: Stripe calculates Alberta GST (5%) based on billing address.

@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { useTurnstile } from '@/hooks/use-turnstile';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { CheckCircle2, ArrowLeft } from 'lucide-react';
 
@@ -8,6 +9,7 @@ const ForgotPasswordPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { containerRef: turnstileRef, resolveToken, ready: captchaReady } = useTurnstile();
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -26,8 +28,10 @@ const ForgotPasswordPage = () => {
       }
 
       const redirectTo = `${window.location.origin}/reset-password`;
+      const captchaToken = await resolveToken();
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo,
+        captchaToken,
       });
 
       if (resetError) {
@@ -105,9 +109,10 @@ const ForgotPasswordPage = () => {
               <p className="text-sm text-destructive">{error}</p>
             )}
 
+            <div ref={turnstileRef} className="hidden" />
             <button
               type="submit"
-              disabled={submitting || !email.includes('@')}
+              disabled={submitting || !email.includes('@') || !captchaReady}
               className="gold-bg px-4 py-3 rounded-sm font-display font-bold text-sm uppercase tracking-wider w-full disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             >
               {submitting ? 'Sending link…' : 'Send Reset Link'}

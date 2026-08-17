@@ -127,6 +127,11 @@ describe('Player Claim and Teams API routes', () => {
             }),
           };
         }
+        if (table === 'api_idempotency_keys') {
+          return {
+            insert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
         if (table === 'profiles') {
           return {
             select: vi.fn().mockReturnValue({
@@ -142,16 +147,18 @@ describe('Player Claim and Teams API routes', () => {
               eq: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
                   is: vi.fn().mockReturnValue({
-                    select: vi.fn().mockReturnValue({
-                      maybeSingle: vi.fn().mockResolvedValue({
-                        data: {
-                          id: 'player-1',
-                          display_name: 'John Doe',
-                          jersey_number: 23,
-                          user_id: 'user-123',
-                          team_id: 'team-1',
-                        },
-                        error: null,
+                    is: vi.fn().mockReturnValue({
+                      select: vi.fn().mockReturnValue({
+                        maybeSingle: vi.fn().mockResolvedValue({
+                          data: {
+                            id: 'player-1',
+                            display_name: 'John Doe',
+                            jersey_number: 23,
+                            user_id: 'user-123',
+                            team_id: 'team-1',
+                          },
+                          error: null,
+                        }),
                       }),
                     }),
                   }),
@@ -169,6 +176,7 @@ describe('Player Claim and Teams API routes', () => {
       headers: {
         'content-type': 'application/json',
         'x-sbbl-user-id-verified': 'user-123',
+        'x-idempotency-key': 'idemp-claim-player-12345',
       },
       body: JSON.stringify({
         teamId: 'team-1',
@@ -206,6 +214,11 @@ describe('Player Claim and Teams API routes', () => {
             }),
           };
         }
+        if (table === 'api_idempotency_keys') {
+          return {
+            insert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
         if (table === 'profiles') {
           return {
             select: vi.fn().mockReturnValue({
@@ -221,9 +234,11 @@ describe('Player Claim and Teams API routes', () => {
               eq: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
                   is: vi.fn().mockReturnValue({
-                    select: vi.fn().mockReturnValue({
-                      // Null means affected rows was 0 because user_id IS NULL condition failed (already claimed)
-                      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                    is: vi.fn().mockReturnValue({
+                      select: vi.fn().mockReturnValue({
+                        // Null means affected rows was 0 because user_id IS NULL condition failed (already claimed)
+                        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                      }),
                     }),
                   }),
                 }),
@@ -240,6 +255,7 @@ describe('Player Claim and Teams API routes', () => {
       headers: {
         'content-type': 'application/json',
         'x-sbbl-user-id-verified': 'user-456',
+        'x-idempotency-key': 'idemp-claim-player-67890',
       },
       body: JSON.stringify({
         teamId: 'team-1',
@@ -291,6 +307,11 @@ describe('Player Claim and Teams API routes', () => {
             }),
           };
         }
+        if (table === 'api_idempotency_keys') {
+          return {
+            insert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
         if (table === 'profiles') {
           return {
             select: vi.fn().mockReturnValue({
@@ -314,6 +335,7 @@ describe('Player Claim and Teams API routes', () => {
       headers: {
         'content-type': 'application/json',
         'x-sbbl-user-id-verified': 'user-789',
+        'x-idempotency-key': 'idemp-claim-player-99999',
       },
       body: JSON.stringify({
         teamId: 'team-1',

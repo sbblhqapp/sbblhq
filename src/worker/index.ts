@@ -2607,7 +2607,9 @@ async function handleOpsListPlayers({ req, admin }: HandlerCtx) {
     const { profiles: _profiles, teams: _teams, ...rest } = row;
     return {
       ...rest,
-      display_name: profile?.display_name || profile?.full_name || null,
+      display_name: (typeof row.display_name === 'string' && row.display_name.trim())
+        ? (row.display_name as string).trim()
+        : profile?.display_name || profile?.full_name || null,
       team_name: team?.name ?? null,
     };
   });
@@ -4239,6 +4241,7 @@ export async function resolvePotgPlayer(
         user_id: userId,
         league_id: leagueUuid,
         team_id: teamId,
+        display_name: trimmed,
         created_by: opts.actorId ?? null,
       })
       .select()

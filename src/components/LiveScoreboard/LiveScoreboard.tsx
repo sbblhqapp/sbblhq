@@ -208,7 +208,7 @@ export const LiveScoreboardView: React.FC<LiveScoreboardViewProps> = ({
             {homeTeamLogo ? (
               <img src={homeTeamLogo} alt={homeTeamName} className="h-10 w-10 sm:h-12 sm:w-12 object-contain" />
             ) : (
-              <span className="text-base sm:text-lg font-bold text-[#C9A84C]">{homeTeamName.slice(0, 3).toUpperCase()}</span>
+              <span className="text-base sm:text-lg font-bold text-[#C9A84C]">{(homeTeamName || 'HOM').slice(0, 3).toUpperCase()}</span>
             )}
             {possession === 'home' && (
               <span className="absolute -bottom-1 -right-1 rounded-full bg-[#C9A84C] px-1.5 py-0.5 text-[9px] font-bold text-[#0A0A0A]">
@@ -242,7 +242,7 @@ export const LiveScoreboardView: React.FC<LiveScoreboardViewProps> = ({
             {awayTeamLogo ? (
               <img src={awayTeamLogo} alt={awayTeamName} className="h-10 w-10 sm:h-12 sm:w-12 object-contain" />
             ) : (
-              <span className="text-base sm:text-lg font-bold text-[#C9A84C]">{awayTeamName.slice(0, 3).toUpperCase()}</span>
+              <span className="text-base sm:text-lg font-bold text-[#C9A84C]">{(awayTeamName || 'AWY').slice(0, 3).toUpperCase()}</span>
             )}
             {possession === 'away' && (
               <span className="absolute -bottom-1 -right-1 rounded-full bg-[#C9A84C] px-1.5 py-0.5 text-[9px] font-bold text-[#0A0A0A]">
@@ -365,7 +365,7 @@ export const LiveScoreboardView: React.FC<LiveScoreboardViewProps> = ({
                       {liveStandings.map((team) => (
                         <tr key={team.team_id} className="transition-colors hover:bg-[#141414]">
                           <td className="py-2.5 font-mono text-[11px] text-[#F5F5F0] truncate max-w-[100px]">
-                            {team.team_id.slice(0, 8)}...
+                            {(team.team_id || '').slice(0, 8)}...
                           </td>
                           <td className="py-2.5 text-center font-bold text-[#2DC653]">{team.wins}</td>
                           <td className="py-2.5 text-center font-bold text-[#E63946]">{team.losses}</td>

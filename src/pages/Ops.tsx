@@ -2156,8 +2156,12 @@ const OpsPage = () => {
             )}
           </div>
         </div>
-      </div></section>)}
-      {activeTab === 'potg' && (<section id="potg" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">POTG Parser</h2><div className="space-y-4"><div className="panel p-4 space-y-5 max-w-xl">
+      </div></section>
+      </OpsTabErrorBoundary>)}
+
+      {activeTab === 'potg' && (
+        <OpsTabErrorBoundary tabName="POTG Parser">
+        <section id="potg" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">POTG Parser</h2><div className="space-y-4"><div className="panel p-4 space-y-5 max-w-xl">
           <div>
             <h2 className="font-display text-xl">POTG Image Parser</h2>
             <p className="text-xs text-muted-foreground mt-1">Upload a Player of the Game graphic — AI vision extracts the data automatically, then you confirm before it writes to the pipeline.</p>

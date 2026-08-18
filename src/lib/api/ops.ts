@@ -145,7 +145,7 @@ export async function fetchOpsList(entity: 'teams' | 'players' | 'products' | 'e
 export type TeamRef = { id: string; name: string; league_id: string | null; status?: string };
 export type PlayerRef = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   team_id: string | null;
   league_id: string | null;
   display_name: string | null;

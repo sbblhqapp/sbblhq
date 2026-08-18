@@ -7,6 +7,7 @@ import { Shield, Upload, Loader2, CheckCircle2, AlertCircle, Trophy, Image as Im
 import { useAuth } from '@/hooks/use-auth';
 import { PotgCard } from '@/components/ui/PotgCard';
 import { MediaLibraryTab } from '@/components/OpsMediaLibrary';
+import { OpsTabErrorBoundary } from '@/components/ops/OpsTabErrorBoundary';
 import {
   fetchOpsBootstrap, fetchImportHistory, fetchPipelineHealth, mergePlayerIdentities,
   parseEventImage, parsePotgImage, manualOpsAction, fetchOpsList, findOrCreatePlayer,
@@ -333,7 +334,9 @@ function TeamSelect({ teams, leagues, leagueSlug, value, onChange, placeholder }
 }
 
 function playerLabel(p: PlayerRef): string {
-  const name = p.display_name || `Unnamed (${p.user_id.slice(0, 8)}…)`;
+  const identifier = p.user_id || p.id || '';
+  const fallback = identifier ? `Unnamed (${identifier.slice(0, 8)}…)` : 'Unnamed Player';
+  const name = (p.display_name && p.display_name.trim()) || fallback;
   const team = p.team_name ? ` — ${p.team_name}` : '';
   const suspended = p.is_suspended ? ' [SUSPENDED]' : '';
   return `${name}${team}${suspended}`;
@@ -355,6 +358,13 @@ function PlayerSelect({ players, value, onChange, placeholder }: {
   );
 }
 
+function formatDateSafe(val: string | null | undefined, options?: Intl.DateTimeFormatOptions): string {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-CA', options);
+}
+
 function EventSelect({ events, value, onChange, placeholder }: {
   events: EventRef[];
   value: string;
@@ -364,11 +374,14 @@ function EventSelect({ events, value, onChange, placeholder }: {
   return (
     <select className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{placeholder}</option>
-      {events.map((ev) => (
-        <option key={ev.id} value={ev.id}>
-          {ev.title}{ev.starts_at ? ` — ${new Date(ev.starts_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
-        </option>
-      ))}
+      {events.map((ev) => {
+        const dateStr = formatDateSafe(ev.starts_at, { month: 'short', day: 'numeric', year: 'numeric' });
+        return (
+          <option key={ev.id} value={ev.id}>
+            {ev.title}{dateStr ? ` — ${dateStr}` : ''}
+          </option>
+        );
+      })}
     </select>
   );
 }
@@ -382,11 +395,14 @@ function ScheduleSelect({ schedules, value, onChange, placeholder }: {
   return (
     <select className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{placeholder}</option>
-      {schedules.map((s) => (
-        <option key={s.id} value={s.id}>
-          {(s.league_code || s.league_name || 'League')} — {new Date(s.starts_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}{s.status ? ` [${s.status}]` : ''}
-        </option>
-      ))}
+      {schedules.map((s) => {
+        const dateStr = formatDateSafe(s.starts_at, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        return (
+          <option key={s.id} value={s.id}>
+            {(s.league_code || s.league_name || 'League')}{dateStr ? ` — ${dateStr}` : ''}{s.status ? ` [${s.status}]` : ''}
+          </option>
+        );
+      })}
     </select>
   );
 }
@@ -1154,6 +1170,7 @@ const OpsPage = () => {
       <div className="space-y-6">
 
       {activeTab === 'overview' && (
+        <OpsTabErrorBoundary tabName="Overview">
         <section id="overview" className="space-y-6 pt-6 min-h-[480px]">
           <h2 className="text-2xl font-display font-bold border-b border-border pb-2">System Health</h2>
           <div className="space-y-6">
@@ -1199,9 +1216,12 @@ const OpsPage = () => {
             </div>
           </div>
         </section>
+        </OpsTabErrorBoundary>
       )}
 
-      {activeTab === 'scores' && (<section id="scores" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Scores</h2><div className="space-y-4"><div className="space-y-6">
+      {activeTab === 'scores' && (
+        <OpsTabErrorBoundary tabName="Scores">
+        <section id="scores" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Scores</h2><div className="space-y-4"><div className="space-y-6">
           {!canOperateOps && <p className="text-sm text-destructive font-semibold panel p-4">League Admin role or higher required for score management.</p>}
 
           {/* ── Scoreboard image OCR ──────────────────────────────── */}
@@ -1363,9 +1383,12 @@ const OpsPage = () => {
             </div>
           </div>
         </div>
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
 
-      {activeTab === 'scoreboard' && (() => {
+      {activeTab === 'scoreboard' && (
+        <OpsTabErrorBoundary tabName="Live Tabulation">
+        {(() => {
         const leagueUuid = leagueUuidForSlug(leaguesRef, scoreboardLeague);
         const leagueTeams = leagueUuid ? teamsList.filter((t) => t.league_id === leagueUuid) : teamsList;
         const leagueScores = scoresList.filter((g) => !g.leagueId || g.leagueId === scoreboardLeague);
@@ -1679,8 +1702,11 @@ const OpsPage = () => {
           </section>
         );
       })()}
+      </OpsTabErrorBoundary>)}
 
-      {activeTab === 'teams' && (<section id="teams" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Teams</h2><div className="space-y-4">
+      {activeTab === 'teams' && (
+        <OpsTabErrorBoundary tabName="Teams">
+        <section id="teams" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Teams</h2><div className="space-y-4">
           <OpsCsvImportSection
             kind="teams"
             csvUpload={csvUpload}
@@ -1738,9 +1764,12 @@ const OpsPage = () => {
             </div>
           )}
         </div>
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
 
-      {activeTab === 'players' && (<section id="players" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Players</h2><div className="space-y-4">
+      {activeTab === 'players' && (
+        <OpsTabErrorBoundary tabName="Players">
+        <section id="players" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Players</h2><div className="space-y-4">
           <OpsCsvImportSection
             kind="players"
             csvUpload={csvUpload}
@@ -1815,10 +1844,13 @@ const OpsPage = () => {
             </div>
           )}
         </div>
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
 
 
-      {activeTab === 'schedules' && (<section id="schedules" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Schedules</h2><div className="space-y-4">
+      {activeTab === 'schedules' && (
+        <OpsTabErrorBoundary tabName="Schedules">
+        <section id="schedules" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Schedules</h2><div className="space-y-4">
           <OpsCsvImportSection
             kind="schedules"
             csvUpload={csvUpload}
@@ -1873,9 +1905,12 @@ const OpsPage = () => {
             </div>
           )}
         </div>
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
 
-      {activeTab === 'events' && (<section id="events" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Events</h2><div className="space-y-4">
+      {activeTab === 'events' && (
+        <OpsTabErrorBoundary tabName="Events">
+        <section id="events" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Events</h2><div className="space-y-4">
           <OpsCsvImportSection
             kind="events"
             csvUpload={csvUpload}
@@ -1983,9 +2018,12 @@ const OpsPage = () => {
             </div>
           )}
         </div>
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
 
-      {activeTab === 'store' && isSuperAdmin && (<section id="store" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Store Catalog</h2><div className="space-y-4"><div className="panel p-4 max-w-xl space-y-8">
+      {activeTab === 'store' && isSuperAdmin && (
+        <OpsTabErrorBoundary tabName="Store Catalog">
+        <section id="store" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Store Catalog</h2><div className="space-y-4"><div className="panel p-4 max-w-xl space-y-8">
           <div>
             <h2 className="font-display text-xl mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-primary" /> Store Media & Product Ops</h2>
             {!isSuperAdmin ? (
@@ -2238,7 +2276,7 @@ const OpsPage = () => {
           {ingestJob && (
             <div className="p-3 bg-success/10 border border-success/20 rounded-sm space-y-2">
               <p className="text-xs text-success font-medium">
-                ✓ Job {ingestJob.jobId.slice(0, 8)} · state: <strong>{ingestJob.state}</strong>
+                ✓ Job {(ingestJob.jobId || '').slice(0, 8)} · state: <strong>{ingestJob.state}</strong>
               </p>
               {ingestJob.state === 'needs_review' && (
                 <div className="flex gap-2 mt-1">
@@ -2270,9 +2308,12 @@ const OpsPage = () => {
             </div>
           )}
         </div>
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
 
-      {activeTab === 'roster' && (<section id="roster" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Roster Import</h2><div className="space-y-4"><div className="panel p-4 space-y-5 max-w-3xl">
+      {activeTab === 'roster' && (
+        <OpsTabErrorBoundary tabName="Roster Import">
+        <section id="roster" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Roster Import</h2><div className="space-y-4"><div className="panel p-4 space-y-5 max-w-3xl">
           <div>
             <h2 className="font-display text-xl">Roster Image Parser</h2>
             <p className="text-xs text-muted-foreground mt-1">Upload a roster/team photo — AI vision extracts the team and player list, then you review and confirm before it creates the team and players.</p>
@@ -2374,7 +2415,7 @@ const OpsPage = () => {
               {rosterImportResult && (
                 <div className="p-3 bg-success/10 border border-success/20 rounded-sm space-y-1">
                   <p className="text-xs text-success font-medium">
-                    ✓ Team {rosterImportResult.teamId.slice(0, 8)} · {rosterImportResult.inserted} created, {rosterImportResult.skipped} already existed, {rosterImportResult.failed} failed
+                    ✓ Team {(rosterImportResult.teamId || '').slice(0, 8)} · {rosterImportResult.inserted} created, {rosterImportResult.skipped} already existed, {rosterImportResult.failed} failed
                   </p>
                   {rosterImportResult.warnings.length > 0 && (
                     <p className="text-[10px] text-warning">{rosterImportResult.warnings.join(' · ')}</p>
@@ -2387,13 +2428,19 @@ const OpsPage = () => {
             </>
           )}
         </div>
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
 
-      {activeTab === 'media' && (<section id="media" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Media Library</h2><div className="space-y-4">
+      {activeTab === 'media' && (
+        <OpsTabErrorBoundary tabName="Media Library">
+        <section id="media" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">Media Library</h2><div className="space-y-4">
         <MediaLibraryTab enabled={canRunOps} />
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
 
-      {activeTab === 'history' && (<section id="history" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">History</h2><div className="space-y-4">
+      {activeTab === 'history' && (
+        <OpsTabErrorBoundary tabName="History">
+        <section id="history" className="space-y-6 pt-6"><h2 className="text-2xl font-display font-bold border-b border-border pb-2">History</h2><div className="space-y-4">
         <div className="panel p-4">
           <h3 className="text-sm font-bold text-destructive mb-2">Ingress Failures (last 20)</h3>
           {ingressFailures.length === 0 ? (
@@ -2449,7 +2496,8 @@ const OpsPage = () => {
             </div>
           )}
         </div>
-      </div></section>)}
+      </div></section>
+      </OpsTabErrorBoundary>)}
       </div>
     </div>
   );

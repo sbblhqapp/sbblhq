@@ -23,7 +23,7 @@
 import type { HandlerCtx } from "../shared";
 import { json } from "../shared";
 
-const OVERLAY_SELECT = "id, game_id, home_score, away_score, period_label, clock_seconds, clock_running, clock_last_started_at, foul_home, foul_away, timeout_home, timeout_away, possession, status_label, is_halftime, is_overtime, is_final, created_at, updated_at";
+const OVERLAY_SELECT = "game_id, home_score, away_score, period, period_label, clock_seconds, clock_running, clock_last_started_at, home_fouls, away_fouls, home_timeouts_left, away_timeouts_left, possession, bonus_home, bonus_away, shot_clock_seconds, last_event_text, last_event_at, overlay_theme, show_sponsor_bug, show_lower_third, lower_third_text, lower_third_subtext, updated_at, updated_by";
 
 function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -90,8 +90,8 @@ export async function handlePublicOverlay({ req, admin, params }: HandlerCtx) {
           id, status, category, event_name, participant1_label, participant2_label,
           home_score, away_score, home_team_id, away_team_id, league_id,
           leagues(code,name),
-          home_team:home_team_id ( id, name, logo_url ),
-          away_team:away_team_id ( id, name, logo_url )
+          home_team:home_team_id ( id, name ),
+          away_team:away_team_id ( id, name )
         `,
       )
       .eq("id", gameId)
@@ -660,7 +660,7 @@ export async function handleOverlayStatus(ctx: HandlerCtx) {
     .update({ status: body.status })
     .eq("id", gameId)
     .select(
-      "id,status,category,event_name,participant1_label,participant2_label,home_score,away_score,leagues(code,name),home_team:teams!home_team_id(id,name,logo_url),away_team:teams!away_team_id(id,name,logo_url)"
+      "id,status,category,event_name,participant1_label,participant2_label,home_score,away_score,leagues(code,name),home_team:teams!home_team_id(id,name),away_team:teams!away_team_id(id,name)"
     )
     .single();
 

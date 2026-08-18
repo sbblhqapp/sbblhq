@@ -86,8 +86,8 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
     .select(`
       id, league_id, home_team_id, away_team_id,
       participant1_label, participant2_label,
-      home_team:home_team_id ( id, name, logo_url ),
-      away_team:away_team_id ( id, name, logo_url )
+      home_team:home_team_id ( id, name ),
+      away_team:away_team_id ( id, name )
     `)
     .eq("id", gameId)
     .maybeSingle();
@@ -377,7 +377,20 @@ export async function handleOpsQuickAddPlayer(ctx: HandlerCtx) {
 
   if (gameErr || !game) return json({ ok: false, error: "game_not_found" }, 404);
 
-  const teamId = body?.teamSide === "home" ? game.home_team_id : game.away_team_id;
+  const side = body?.teamSide === "home" || body?.teamSide === "away" ? body.teamSide : null;
+  if (!side) {
+    return json({ ok: false, error: "invalid_team_side", message: "teamSide must be 'home' or 'away'" }, 400);
+  }
+
+  const teamId = side === "home" ? game.home_team_id : game.away_team_id;
+  if (!teamId) {
+    return json({
+      ok: false,
+      error: "team_not_assigned_to_game",
+      message: `Cannot add player: the ${side} team is not assigned to this game. Please assign home/away teams to the game first.`,
+    }, 400);
+  }
+
   const leagueId = game.league_id;
   const jersey = body?.jerseyNumber !== undefined && body?.jerseyNumber !== "" ? Number(body.jerseyNumber) : null;
 

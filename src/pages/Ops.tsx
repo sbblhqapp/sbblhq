@@ -1188,21 +1188,21 @@ const OpsPage = () => {
                 <div className="panel p-4 animate-pulse bg-muted/20 min-h-[88px]" />
                 <div className="panel p-4 animate-pulse bg-muted/20 min-h-[88px]" />
               </div>
-            ) : pipelineHealthQuery.data ? (
+            ) : pipelineHealthQuery.data?.metrics ? (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Pipeline Health Metrics</h3>
                 <div className="grid md:grid-cols-3 gap-4">
-                  {Object.entries(pipelineHealthQuery.data.metrics).map(([name, m]) => (
+                  {Object.entries(pipelineHealthQuery.data.metrics ?? {}).map(([name, m]) => (
                     <div key={name} className={`panel p-4 border ${m.status === 'critical' ? 'border-destructive/60' : m.status === 'warn' ? 'border-warning/50' : 'border-border'}`}>
                       <p className="text-xs text-muted-foreground">{name.replace(/_/g, ' ')}</p>
                       <p className={`stat-numeral text-3xl ${m.status === 'critical' ? 'text-destructive' : m.status === 'warn' ? 'text-warning' : 'text-success'}`}>{m.value}</p>
                       <p className="text-[10px] text-muted-foreground">warn ≥{m.warn} · critical ≥{m.critical}</p>
                     </div>
                   ))}
-                  {pipelineHealthQuery.data.alerts.length > 0 && (
+                  {(pipelineHealthQuery.data.alerts ?? []).length > 0 && (
                     <div className="panel p-4 md:col-span-3 border border-destructive/40">
                       <p className="text-xs font-bold text-destructive mb-1">Pipeline alerts</p>
-                      {pipelineHealthQuery.data.alerts.map((a) => <p key={a} className="text-xs font-mono text-destructive">{a}</p>)}
+                      {(pipelineHealthQuery.data.alerts ?? []).map((a) => <p key={a} className="text-xs font-mono text-destructive">{a}</p>)}
                     </div>
                   )}
                 </div>

@@ -119,8 +119,12 @@ describe('BEHAVIORAL: live-PPV revenue stays super-admin only', () => {
   it('super_admin succeeds with a real 200 + real computed totals', async () => {
     const state = revenueState();
     state.orders = [
-      { id: 'o1', total_amount: 4.19, status: 'paid', metadata: { purchase_type: 'ppv' } },
-      { id: 'o2', total_amount: 25.0, status: 'paid', metadata: { purchase_type: 'store' } },
+      // Column is `orders.total`. This fixture previously said `total_amount`,
+      // a column that has never existed on public.orders — so the test passed
+      // against a shape production could not produce, and the real handler's
+      // 42703 went unnoticed. Fixtures must mirror the live schema.
+      { id: 'o1', total: 4.19, status: 'paid', metadata: { purchase_type: 'ppv' } },
+      { id: 'o2', total: 25.0, status: 'paid', metadata: { purchase_type: 'store' } },
     ];
     state.ppv_invites = [{ id: 'i1' }, { id: 'i2' }, { id: 'i3' }];
     const ctx = mkCtx({ url: 'https://local/ops/revenue', userId: SUPER_ADMIN_ID, admin: createAdmin(state) });

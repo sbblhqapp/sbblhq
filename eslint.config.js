@@ -37,7 +37,11 @@ const DATA_FIXTURE_PATTERNS = [
 ];
 
 export default tseslint.config(
-  { ignores: ["dist", "dev-dist", "supabase-source", "supabase", "supabase-docker", ".claude", "coverage"] },
+  // `.wrangler` holds the bundle `wrangler dev` emits into .wrangler/tmp/.
+  // Without it, running the Worker locally and then `npm run lint` fails on
+  // generated vendor code — a lint that breaks because you ran the dev server
+  // is a lint developers learn to skip.
+  { ignores: ["dist", "dev-dist", ".wrangler", "supabase-source", "supabase", "supabase-docker", ".claude", "coverage"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

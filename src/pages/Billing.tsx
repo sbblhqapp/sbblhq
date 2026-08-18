@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 interface Order {
   id: string;
   created_at: string;
-  total_amount: number;
+  /** Cents. Column is `orders.total` — there is no `total_amount` column. */
+  total: number;
   status: string;
   metadata: Record<string, unknown> | null;
 }
@@ -115,7 +116,7 @@ const BillingPage = () => {
                     <p className="text-[11px] text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="stat-numeral text-sm">${(o.total_amount / 100).toFixed(2)}</p>
+                    <p className="stat-numeral text-sm">${((o.total ?? 0) / 100).toFixed(2)}</p>
                     <p className={`text-[10px] uppercase font-semibold ${o.status === 'paid' ? 'text-success' : 'text-muted-foreground'}`}>{o.status}</p>
                   </div>
                 </div>

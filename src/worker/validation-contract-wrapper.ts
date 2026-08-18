@@ -1,14 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import baseWorker, { getSession } from './index';
+// The rate limiter's state (a Map) and its size cap (a number) MUST NOT be
+// re-exported from this module: this file is the wrangler `main` entrypoint,
+// and workerd rejects any non-handler export on it, which breaks `wrangler dev`
+// outright. See the header comment in ./rate-limit.ts.
+import { enforceInMemoryRateLimit } from './rate-limit';
 
 const MUTATION_IDEMPOTENCY_RE = [
   /^\/api\/streams\/[^/]+\/(purchase|access|resume|revoke|expire|comments|reactions)$/,
 ];
-
-// Sliding-window buckets keyed by rate-limit token.
-export const runtimeRateLimit = new Map<string, number[]>();
-// OOM guard: evict the oldest entry when the map exceeds this size.
-export const RUNTIME_RATE_LIMIT_MAX = 50_000;
 
 function json(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), {
@@ -35,35 +35,6 @@ function readIdempotencyKey(req: Request) {
 function requiresMutationIdempotency(pathname: string, method: string) {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return false;
   return MUTATION_IDEMPOTENCY_RE.some((r) => r.test(pathname));
-}
-
-// Sliding-window rate limiter with OOM guard.
-export function enforceInMemoryRateLimit(
-  key: string,
-  limit: number,
-  windowMs: number,
-  maxEntries = RUNTIME_RATE_LIMIT_MAX,
-): boolean {
-  const now = Date.now();
-  const bucket = runtimeRateLimit.get(key) ?? [];
-  const next = bucket.filter((ts) => now - ts < windowMs);
-  if (next.length >= limit) {
-    runtimeRateLimit.set(key, next);
-    return false;
-  }
-  next.push(now);
-  if (runtimeRateLimit.size >= maxEntries) {
-    // Batch evict the oldest 500 entries to avoid calling
-    // keys().next() on every request once the limit is reached.
-    const iterator = runtimeRateLimit.keys();
-    for (let i = 0; i < 500; i++) {
-      const { value, done } = iterator.next();
-      if (done) break;
-      runtimeRateLimit.delete(value);
-    }
-  }
-  runtimeRateLimit.set(key, next);
-  return true;
 }
 
 function withRequestId(req: Request) {

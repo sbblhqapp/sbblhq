@@ -51,6 +51,11 @@ type ScheduleDay = {
 };
 
 function formatScheduleTime(input: string): string {
+  // A date-only value ("2026-08-16") carries NO tip-off time: it comes from
+  // games.game_date when the game has no linked schedule_slot. Rendering it as
+  // "12:00 AM" invents a time the league never set and reads as a bug. Show
+  // TBA — the same honest placeholder already used for venue and court.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input.trim())) return 'TBA';
   const parsed = new Date(input);
   if (Number.isNaN(parsed.getTime())) return 'TBA';
   return parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });

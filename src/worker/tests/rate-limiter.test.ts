@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import * as RateLimiter from '../validation-contract-wrapper';
+import * as RateLimiter from '../rate-limit';
 
 describe('enforceInMemoryRateLimit', () => {
   beforeEach(() => {

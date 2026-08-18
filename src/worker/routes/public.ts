@@ -41,14 +41,24 @@ export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
     return json({ ok: true, data: [] }, 200, CACHE_HEADERS.FREQUENT);
   }
 
-  // 1. Query upcoming / scheduled games with rich team, division, venue, and court metadata
+  // 1. Query upcoming / scheduled games with rich team, division, venue, and court metadata.
+  //
+  // SCHEMA CONTRACT — do not "restore" scheduled_at/venue_id here. `games` has
+  // NEITHER column (verified against production: both raise Postgres 42703
+  // "column games.scheduled_at does not exist"). The game's own date lives in
+  // `games.game_date`; the wall-clock time, venue and court live on the linked
+  // `schedule_slots` row reached through games.schedule_slot_id. A prior rewrite
+  // of this handler selected and ordered by `scheduled_at`, which made the query
+  // fail on every request and silently drop through to the schedule_slots
+  // fallback below — and because that table is empty, the public Schedules page
+  // rendered "NO GAMES SCHEDULED" for all three leagues while 19 games existed.
   let gamesQuery = admin
     .from("games")
     .select(
-      "id,status,scheduled_at,league_id,home_team:teams!home_team_id(id,name,divisions(name)),away_team:teams!away_team_id(id,name,divisions(name)),venues(id,name,address),courts(id,name)",
+      "id,status,game_date,league_id,participant1_label,participant2_label,home_team:teams!home_team_id(id,name,divisions(name)),away_team:teams!away_team_id(id,name,divisions(name)),schedule_slots(starts_at,venues(id,name,address),courts(id,name))",
     )
     .in("status", ["scheduled", "upcoming", "live"])
-    .order("scheduled_at", { ascending: true })
+    .order("game_date", { ascending: true })
     .limit(100);
 
   if (leagueFilter) {
@@ -57,24 +67,35 @@ export async function handlePublicSchedule({ req, admin }: HandlerCtx) {
 
   const { data: gamesData, error: gamesErr } = await gamesQuery;
 
-  if (!gamesErr && gamesData && gamesData.length > 0) {
+  // CLAUDE.md rules 1 & 2: a broken query must surface, never degrade into a
+  // silently-empty page. Only a SUCCESSFUL, genuinely-empty result may fall
+  // through to the schedule_slots path below.
+  if (gamesErr) throw new Error(gamesErr.message);
+
+  if (gamesData && gamesData.length > 0) {
     const formatted = gamesData.map((g: Record<string, unknown>) => {
       const homeTeam = g.home_team as { name?: string; divisions?: { name?: string } } | null;
       const awayTeam = g.away_team as { name?: string; divisions?: { name?: string } } | null;
-      const venues = g.venues as { name?: string; address?: string } | null;
-      const courts = g.courts as { name?: string } | null;
+      const slot = g.schedule_slots as {
+        starts_at?: string | null;
+        venues?: { name?: string; address?: string } | null;
+        courts?: { name?: string } | null;
+      } | null;
 
       return {
         id: g.id,
-        starts_at: g.scheduled_at,
+        // Prefer the slot's precise tip-off time; fall back to the game's date.
+        starts_at: slot?.starts_at ?? (g.game_date as string | null),
         league_id: g.league_id,
         status: g.status,
-        home_team_name: homeTeam?.name ?? "TBA",
-        away_team_name: awayTeam?.name ?? "TBA",
+        home_team_name:
+          homeTeam?.name ?? (g.participant1_label as string | null) ?? "TBA",
+        away_team_name:
+          awayTeam?.name ?? (g.participant2_label as string | null) ?? "TBA",
         division_name: homeTeam?.divisions?.name ?? awayTeam?.divisions?.name ?? null,
-        venue: venues?.name ?? "TBA",
-        address: venues?.address ?? "TBA",
-        court: courts?.name ?? "Main Court",
+        venue: slot?.venues?.name ?? "TBA",
+        address: slot?.venues?.address ?? "TBA",
+        court: slot?.courts?.name ?? "Main Court",
       };
     });
 
@@ -141,12 +162,15 @@ export async function handlePublicHome({ req, admin }: HandlerCtx) {
       .eq("status", "published")
       .limit(200),
     admin
+      // Same schema contract as handlePublicSchedule above: games has no
+      // scheduled_at and no venue_id — time/venue/court come from the linked
+      // schedule_slots row, the date from games.game_date.
       .from("games")
       .select(
-        "id,home_team_id,away_team_id,status,home_score,away_score,scheduled_at,venue_id,venues(name),courts(name),season_id,seasons(league_id,leagues(code))",
+        "id,home_team_id,away_team_id,status,home_score,away_score,game_date,schedule_slots(starts_at,venues(name),courts(name)),season_id,seasons(league_id,leagues(code))",
       )
       .in("status", ["live", "upcoming", "final"])
-      .order("scheduled_at", { ascending: true })
+      .order("game_date", { ascending: true })
       .limit(50),
     admin
       .from("seasons")

@@ -131,7 +131,8 @@ export async function handleBiometricIngest(ctx: HandlerCtx): Promise<Response> 
       fatigue_level: fatigue,
       source,
       recorded_at: recordedAt,
-      created_by: userId,
+      // NOTE: player_biometric_snapshots has no `created_by` column (42703 on
+      // insert). Do not re-add it without a migration that creates it first.
     })
     .select('id, game_id, player_id, heart_rate_bpm, stamina_pct, fatigue_level, source, recorded_at')
     .single();

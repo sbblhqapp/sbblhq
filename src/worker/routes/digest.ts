@@ -114,7 +114,12 @@ async function collectFacts(
   const { data: stats } = await admin
     .from("player_game_stats")
     .select(
-      "pts, reb, ast, player_id, players(user_id, team_id, teams(name), profiles:user_id(display_name)), games!inner(created_at, status, league_id)",
+      // `players.user_id` carries NO foreign key, so `profiles:user_id(...)`
+      // fails the whole query with PGRST200 ("Could not find a relationship
+      // between 'players' and 'user_id'"). The real FK is players.profile_id →
+      // profiles. players.display_name is the primary name source since the
+      // roster/profile decoupling; the profile is only a fallback.
+      "pts, reb, ast, player_id, players(display_name, user_id, team_id, teams(name), profiles:profile_id(display_name, full_name)), games!inner(created_at, status, league_id)",
     )
     .gte("games.created_at", start.toISOString())
     .lte("games.created_at", end.toISOString())
@@ -125,7 +130,13 @@ async function collectFacts(
   for (const row of stats ?? []) {
     const r = row as Record<string, unknown>;
     const players = r.players as
-      | { user_id?: string; team_id?: string; teams?: { name?: string } | null; profiles?: { display_name?: string } | null }
+      | {
+          display_name?: string | null;
+          user_id?: string;
+          team_id?: string;
+          teams?: { name?: string } | null;
+          profiles?: { display_name?: string; full_name?: string } | null;
+        }
       | null;
     const game = r.games as { league_id?: string | null } | null;
     if (leagueId && game?.league_id !== leagueId) continue;
@@ -133,7 +144,12 @@ async function collectFacts(
     const existing =
       agg.get(key) ??
       {
-        name: String(players?.profiles?.display_name ?? "Unknown"),
+        name: String(
+          players?.display_name ??
+            players?.profiles?.display_name ??
+            players?.profiles?.full_name ??
+            "Unknown",
+        ),
         team: players?.teams?.name ?? null,
         pts: 0,
         reb: 0,

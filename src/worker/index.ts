@@ -1256,7 +1256,7 @@ export async function handleOpsRevenue({ req, admin }: HandlerCtx) {
   const [orders, invites, sessions] = await Promise.all([
     admin
       .from("orders")
-      .select("id,total_amount,status,metadata")
+      .select("id,total,status,metadata")
       .eq("status", "paid"),
     admin.from("ppv_invites").select("id"),
     admin
@@ -1272,7 +1272,7 @@ export async function handleOpsRevenue({ req, admin }: HandlerCtx) {
     return metadata.purchase_type === "ppv";
   });
   const totalPpvRevenue = ppvOrders.reduce(
-    (sum, o: Record<string, unknown>) => sum + Number(o.total_amount ?? 0),
+    (sum, o: Record<string, unknown>) => sum + Number(o.total ?? 0),
     0,
   );
 
@@ -5412,19 +5412,27 @@ export async function handlePlaybackPreflight(ctx: HandlerCtx) {
 
   const userId = optionalAuth(ctx.req);
 
+  // SCHEMA CONTRACT: `games` has neither `starts_at` nor `ended_at` (verified
+  // against production — both raise 42703). Tip-off comes from the linked
+  // schedule_slots row, falling back to games.game_date; "ended" is derived
+  // from games.status, which is authoritative. Selecting the phantom columns
+  // made `data` null for EVERY game, so this handler answered 404
+  // "game_not_found" for games that plainly exist.
   const gRes = await ctx.admin
     .from("games")
     .select(
-      "id, status, starts_at, ended_at, replay_mode, replay_monetization_enabled_at, replay_quality_tier, replay_price",
+      "id, status, game_date, schedule_slots(starts_at), replay_mode, replay_monetization_enabled_at, replay_quality_tier, replay_price",
     )
     .eq("id", gameId)
     .maybeSingle();
-  const game = gRes.data as
+  // `schedule_slots` is a to-one embed (games.schedule_slot_id FK), so
+  // PostgREST returns an object; the generated row type widens it to an array.
+  const game = gRes.data as unknown as
     | {
         id: string;
         status: string | null;
-        starts_at: string | null;
-        ended_at: string | null;
+        game_date: string | null;
+        schedule_slots: { starts_at: string | null } | null;
         replay_mode: "none" | "raw" | "edited" | null;
         replay_monetization_enabled_at: string | null;
         replay_quality_tier: "raw" | "edited" | null;
@@ -5439,13 +5447,18 @@ export async function handlePlaybackPreflight(ctx: HandlerCtx) {
   // dedicated column. Missing status → treat as live if tipoff has
   // passed.
   let state: "upcoming" | "live" | "halftime" | "ended_replay" | "ended_no_replay" | "unavailable";
-  if (game.ended_at || game.status === "completed" || game.status === "ended") {
+  // `final` is the status production actually stores for a finished game;
+  // `completed`/`ended` are kept for older rows.
+  const tipoffAt = game.schedule_slots?.starts_at ?? game.game_date;
+  if (game.status === "final" || game.status === "completed" || game.status === "ended") {
     state = replayMode === "none" ? "ended_no_replay" : "ended_replay";
   } else if (game.status === "halftime") {
     state = "halftime";
-  } else if (game.starts_at && new Date(game.starts_at).getTime() > now) {
+  } else if (game.status === "live") {
+    state = "live";
+  } else if (tipoffAt && new Date(tipoffAt).getTime() > now) {
     state = "upcoming";
-  } else if (game.starts_at) {
+  } else if (tipoffAt) {
     state = "live";
   } else {
     state = "unavailable";
@@ -5514,7 +5527,7 @@ export async function handlePlaybackPreflight(ctx: HandlerCtx) {
       game: {
         id: game.id,
         state,
-        tipoffAt: game.starts_at,
+        tipoffAt,
         ppvPriceCad: 3.99, // matches handleStreamPurchase hardcoded price
         replay: {
           embargoEndsAt: game.replay_monetization_enabled_at ?? null,
@@ -6369,7 +6382,7 @@ async function handleCreateOrder({ req, admin }: HandlerCtx) {
     .insert({
       user_id: userId,
       status: "pending",
-      total_amount: 0, // will be updated by payment webhook
+      total: 0, // will be updated by payment webhook
       metadata: { cart_id: body.cartId, item_count: (items ?? []).length },
       idempotency_key: readIdempotencyKey(req.headers),
     })
@@ -6399,7 +6412,7 @@ async function handlePayOrder(ctx: HandlerCtx) {
 
   const { data: order } = await ctx.admin
     .from("orders")
-    .select("id,total_amount,status")
+    .select("id,total,status")
     .eq("id", orderId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -6423,7 +6436,7 @@ async function handlePayOrder(ctx: HandlerCtx) {
       "line_items[0][price_data][currency]": "cad",
       "line_items[0][price_data][product_data][name]": "SBBL HQ Store Order",
       "line_items[0][price_data][unit_amount]": String(
-        ((order as Record<string, unknown>).total_amount as number) || 100,
+        ((order as Record<string, unknown>).total as number) || 100,
       ),
       "line_items[0][quantity]": "1",
       mode: "payment",
@@ -6898,7 +6911,7 @@ async function handleBillingHistory({ req, admin }: HandlerCtx) {
   const userId = requireAuth(req);
   const { data, error } = await admin
     .from("orders")
-    .select("id,created_at,total_amount,status,metadata")
+    .select("id,created_at,total,status,metadata")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(50);

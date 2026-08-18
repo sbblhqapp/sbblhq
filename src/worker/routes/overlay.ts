@@ -90,8 +90,8 @@ export async function handlePublicOverlay({ req, admin, params }: HandlerCtx) {
           id, status, category, event_name, participant1_label, participant2_label,
           home_score, away_score, home_team_id, away_team_id, league_id,
           leagues(code,name),
-          home_team:home_team_id ( id, name ),
-          away_team:away_team_id ( id, name )
+          home_team:home_team_id ( id, name, logo_url ),
+          away_team:away_team_id ( id, name, logo_url )
         `,
       )
       .eq("id", gameId)
@@ -660,7 +660,7 @@ export async function handleOverlayStatus(ctx: HandlerCtx) {
     .update({ status: body.status })
     .eq("id", gameId)
     .select(
-      "id,status,category,event_name,participant1_label,participant2_label,home_score,away_score,leagues(code,name),home_team:teams!home_team_id(id,name),away_team:teams!away_team_id(id,name)"
+      "id,status,category,event_name,participant1_label,participant2_label,home_score,away_score,leagues(code,name),home_team:teams!home_team_id(id,name,logo_url),away_team:teams!away_team_id(id,name,logo_url)"
     )
     .single();
 

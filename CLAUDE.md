@@ -877,6 +877,70 @@ calls the old `manualOpsAction('player','create',{userId})` contract) and
 `fetchLeagueMap` resolves case-insensitively). Both suites are mutation-tested
 — see the incident entry below for the exact regressions each one catches.
 
+### 14. Column names are verified against the database, not against a mock
+
+**Owner rule (2026-08-18).** Every gate in this repo passed green while six
+production surfaces were dead, because a mocked Supabase client will happily
+return any shape you ask it for — including one built on columns that do not
+exist. Mocks verify our *logic*; only the real schema verifies our *column
+names*.
+
+#### 14.1 — Known-absent columns. Do not "restore" these.
+
+| Table | Does NOT have | Use instead |
+|---|---|---|
+| `games` | `scheduled_at`, `venue_id`, `starts_at`, `ended_at` | `game_date`; time/venue/court via `schedule_slots` (FK `games.schedule_slot_id`); "ended" from `status` (`final`) |
+| `orders` | `total_amount` | `total` (numeric, cents) |
+| `players` | *(FK on `user_id`)* | `profile_id → profiles` for any `profiles:…()` embed |
+| `player_biometric_snapshots` | `created_by` | — |
+
+A column existing is not the same as it being **embeddable**: PostgREST accepts
+an FK column as an embed target only when a real foreign key exists.
+`profiles:user_id(...)` on `players` fails the entire query with `PGRST200`
+even though `players.user_id` is a perfectly real column.
+
+#### 14.2 — A failing query must surface, never silently degrade
+
+```ts
+// ❌ BANNED — this exact guard hid a 42703 behind an empty fallback table and
+// blanked the public Schedules page for all three leagues.
+if (!gamesErr && gamesData && gamesData.length > 0) { /* use it */ }
+// ...falls through to an unrelated fallback query
+```
+
+```ts
+// ✅ CORRECT — errors throw; only a SUCCESSFUL empty result may fall through.
+if (gamesErr) throw new Error(gamesErr.message);
+if (gamesData && gamesData.length > 0) { /* use it */ }
+```
+
+Also note `supabase-js .rpc()` **resolves with `{ error }`; it does not throw**.
+A `try/catch` around an RPC catches nothing — check `res.error` explicitly, or
+the failure is silent (this is how every admin game-deletion went unaudited).
+
+#### 14.3 — Test fixtures must mirror the live schema
+
+If a fixture names a column production does not have, the test is asserting
+against an impossible response. When you change a fixture's shape, check it
+against `src/test/fixtures/production-schema.json`.
+
+#### 14.4 — The Worker entrypoint exports handlers only
+
+`src/worker/validation-contract-wrapper.ts` is the wrangler `main`. workerd
+registers every named export as a candidate entrypoint and **refuses to start**
+on a non-callable one, which breaks `wrangler dev` entirely. Constants and
+state belong in a sibling module (`src/worker/rate-limit.ts`). A Worker nobody
+can run locally is a Worker whose queries never meet a real database before
+production — that is the root enabler of this whole incident class.
+
+**Enforcement:** `src/test/worker-schema-contract.test.ts` (scans every
+`.from().select()` under `src/` against a committed snapshot of the live schema
+and its FK graph) and `src/test/worker-entrypoint-exports.test.ts`. Regenerate
+the snapshot after any migration reaches production — the command is in the
+schema-contract test's header. Use `pg_class`/`pg_attribute`, **not**
+`information_schema.columns`, which omits materialized views and yields a false
+"table does not exist" on `mvw_standings`.
+
 ## Architecture at a glance
 
 ```
@@ -957,6 +1021,53 @@ npm run build       # production build (vite)
 CI runs all of these. Do not merge red.
 
 ## Incident history (relevant to this guide)
+
+- **2026-08-18** — Schema-drift outage across six surfaces, with all four
+  validation gates green. Worker queries named columns and relationships that
+  do not exist on the live database. Verified against production, not inferred:
+  `games` has **no** `scheduled_at`, `venue_id`, `starts_at` or `ended_at` (the
+  date is `game_date`; time/venue/court live on the linked `schedule_slots`
+  row), `orders` has **no** `total_amount` or `metadata` (the money column is
+  `total`), and `players.user_id` carries **no** FK (the real one is
+  `profile_id → profiles`). Consequences: the public **Schedules** page was
+  blank for all three leagues while 19 games existed — the failing `games`
+  query fell through a `if (!gamesErr && …)` guard to a `schedule_slots`
+  fallback, and that table holds 0 rows, so the outage was invisible;
+  **AppHome** reported 0 live / 0 upcoming / 0 recent for every league;
+  **playback preflight** and **replay status** answered 404 `game_not_found`
+  for games that exist; **store checkout, Stripe pay, and billing history**
+  could not create or read an order (`orders` held 0 rows); **Ops PPV revenue**
+  threw `ops_revenue_failed`; and `log_admin_action` was called with
+  `p_target_type`/`p_target_id`/`p_details` instead of
+  `p_ref_type`/`p_ref_id`/`p_payload`, so every admin game-deletion went
+  unaudited — the `try/catch` around it was inert, because supabase-js `.rpc()`
+  RESOLVES with `{ error }` rather than throwing.
+
+  Why nothing caught it: unit tests mock the Supabase client, so a fixture
+  keyed on a phantom column (`orders.total_amount`) asserts happily against a
+  shape production cannot return. `wrangler dev` had been **broken outright** —
+  the entrypoint module exported a `number` and a `Map`, and workerd refuses to
+  start on any non-handler export — so nobody could run the Worker against a
+  real database locally. And the newest E2E "12-tab Ops sweep" could not fail:
+  its `/ops/bootstrap` mock used a flat shape (the real handler nests under
+  `references`), it stubbed only that one route so `/ops/imports/history` 401'd
+  and collapsed the console to "Session expired", every assertion was wrapped
+  in `if (await tab.isVisible())`, and three of its twelve tab labels
+  (`Scoreboard`, `Store`, `History`) do not exist — the real ones are
+  `Live Tabulation`, `Store Media`, `Import History`.
+
+  Fixes: all queries corrected against the real schema; the silent
+  `schedule_slots` fallback now runs only on a SUCCESSFUL empty result (rules
+  1 & 2); `orders.metadata` added by migration `20260818150000`; rate-limiter
+  state moved to `src/worker/rate-limit.ts` so `wrangler dev` starts; team
+  `logo_url` restored to the overlay/scoreboard embeds (the column exists —
+  stripping it was a regression, not a fix); date-only fixtures render `TBA`
+  instead of a fabricated `12:00 AM`. New permanent guards, each
+  mutation-verified: `src/test/worker-schema-contract.test.ts` (checks every
+  `.from().select()` in `src/` against a committed snapshot of the live schema
+  **and** its real FK graph — 5 deliberate regressions each produced a
+  distinct, correctly-scoped failure) and
+  `src/test/worker-entrypoint-exports.test.ts`. See rule **14**.
 
 - **2026-08-09** — Ops Console UUID-elimination + a live rule-10 violation
   found in the audit. The Manual Ops forms (Teams/Players/Schedules/Events)
@@ -1165,4 +1276,4 @@ and `sbbl-hq-selfhost/WARNING_NOT_ACTIVE_SELFHOST_ROOT.md`.
 
 ---
 
-Last verified: 2026-08-09
+Last verified: 2026-08-18

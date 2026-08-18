@@ -28,7 +28,10 @@ export async function handleReplayStatus(ctx: HandlerCtx): Promise<Response> {
 
   const gRes = await ctx.admin
     .from('games')
-    .select('id, replay_mode, replay_monetization_enabled_at, replay_quality_tier, replay_price, ended_at')
+    // `games` has no `ended_at` column (42703). It was selected but never read
+    // — the only effect was making `data` null, so every replay-status request
+    // answered 404 "game_not_found" for games that exist.
+    .select('id, replay_mode, replay_monetization_enabled_at, replay_quality_tier, replay_price')
     .eq('id', gameId)
     .maybeSingle();
   const game = gRes.data as {
@@ -37,7 +40,6 @@ export async function handleReplayStatus(ctx: HandlerCtx): Promise<Response> {
     replay_monetization_enabled_at: string | null;
     replay_quality_tier: 'raw' | 'edited' | null;
     replay_price: number | null;
-    ended_at: string | null;
   } | null;
   if (!game) return json({ ok: false, error: 'game_not_found' }, 404);
 

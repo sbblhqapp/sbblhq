@@ -44,6 +44,9 @@ verification-matrix.md
 # Vite PWA dev artifacts
 dev-dist/
 
+# Local `wrangler dev` bundle + state
+.wrangler/
+
 # Internal APEX tooling — must never be committed to product repos
 *.zip
 apex-*.md

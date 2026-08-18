@@ -86,8 +86,8 @@ export async function handleGetGamePlayerStats(ctx: HandlerCtx) {
     .select(`
       id, league_id, home_team_id, away_team_id,
       participant1_label, participant2_label,
-      home_team:home_team_id ( id, name ),
-      away_team:away_team_id ( id, name )
+      home_team:home_team_id ( id, name, logo_url ),
+      away_team:away_team_id ( id, name, logo_url )
     `)
     .eq("id", gameId)
     .maybeSingle();
@@ -475,23 +475,34 @@ export async function handleOpsDeleteGame(ctx: HandlerCtx): Promise<Response> {
   const { error: delErr } = await ctx.admin.from("games").delete().eq("id", gameId);
   if (delErr) return json({ ok: false, error: delErr.message }, 500);
 
-  // 4. Audit log
-  try {
-    await ctx.admin.rpc("log_admin_action", {
-      p_action: "GAME_DELETED",
-      p_target_type: "game",
-      p_target_id: gameId,
-      p_details: {
-        deletedBy: adminId,
-        priorStatus: game.status,
-        leagueId: game.league_id,
-        seasonId: game.season_id,
-        participant1Label: game.participant1_label,
-        participant2Label: game.participant2_label,
-      },
-    });
-  } catch {
-    // Non-fatal
+  // 4. Audit log.
+  //
+  // Argument names MUST match the published signature
+  //   log_admin_action(p_action text, p_ref_type text, p_ref_id uuid,
+  //                    p_payload jsonb, p_idempotency_key text)
+  // The previous call used p_target_type/p_target_id/p_details, which PostgREST
+  // rejects with PGRST202 ("no matches were found in the schema cache"). The
+  // try/catch did not save it either: supabase-js `.rpc()` RESOLVES with an
+  // `{ error }` object rather than throwing, so nothing was caught and every
+  // game deletion went unaudited, silently.
+  const auditRes = await ctx.admin.rpc("log_admin_action", {
+    p_action: "GAME_DELETED",
+    p_ref_type: "game",
+    p_ref_id: gameId,
+    p_payload: {
+      deletedBy: adminId,
+      priorStatus: game.status,
+      leagueId: game.league_id,
+      seasonId: game.season_id,
+      participant1Label: game.participant1_label,
+      participant2Label: game.participant2_label,
+    },
+    p_idempotency_key: `game-deleted:${gameId}`,
+  });
+  if (auditRes.error) {
+    // Non-fatal: the deletion already happened and must not be rolled back.
+    // But it is never silent again — an unaudited admin delete is a finding.
+    console.error("log_admin_action GAME_DELETED failed", auditRes.error.message);
   }
 
   // 5. If final, refresh standings

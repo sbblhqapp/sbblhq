@@ -1,0 +1,1951 @@
+{
+ "_meta": {
+  "project": "ezanilxygnpucwkwpsoc",
+  "schema": "public",
+  "captured": "2026-08-18",
+  "source": "pg_class + pg_attribute (includes materialized views, which information_schema.columns omits)",
+  "regenerate": "see src/test/worker-schema-contract.test.ts header",
+  "foreignKeys": "src_column -> referenced table, from pg_constraint contype=f. PostgREST only accepts an FK column as an embed target when a real FK exists."
+ },
+ "objects": {
+  "admin_email_grants": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "email",
+    "note",
+    "role"
+   ]
+  },
+  "ai_weekly_digest": {
+   "kind": "table",
+   "columns": [
+    "generated_at",
+    "headline",
+    "id",
+    "league_id",
+    "model",
+    "sections",
+    "summary",
+    "week_end",
+    "week_start"
+   ]
+  },
+  "api_idempotency_keys": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "id",
+    "idempotency_key",
+    "route",
+    "user_id"
+   ]
+  },
+  "audit_logs": {
+   "kind": "table",
+   "columns": [
+    "action",
+    "actor",
+    "actor_id",
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "metadata",
+    "occurred_at",
+    "outcome",
+    "payload",
+    "ref_id",
+    "ref_type",
+    "request_id",
+    "updated_at",
+    "updated_by",
+    "validation_run_id"
+   ]
+  },
+  "billing_events": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "event_type",
+    "id",
+    "payload",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "broadcast_markers": {
+   "kind": "table",
+   "columns": [
+    "away_score",
+    "clock_seconds",
+    "created_at",
+    "created_by",
+    "game_id",
+    "home_score",
+    "id",
+    "idempotency_key",
+    "label",
+    "ledger_event_id",
+    "marker_type",
+    "payload",
+    "period"
+   ]
+  },
+  "career_stat_projection": {
+   "kind": "table",
+   "columns": [
+    "ast",
+    "blk",
+    "fls",
+    "games_played",
+    "id",
+    "league_id",
+    "payload",
+    "pts",
+    "reb",
+    "rebuilt_at",
+    "season_id",
+    "stl",
+    "subject_id",
+    "subject_type"
+   ]
+  },
+  "cart_items": {
+   "kind": "table",
+   "columns": [
+    "cart_id",
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "qty",
+    "updated_at",
+    "updated_by",
+    "variant_id"
+   ]
+  },
+  "carts": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "status",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "clips": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "end_seconds",
+    "game_id",
+    "id",
+    "media_asset_id",
+    "start_seconds",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "coach_approval_requests": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "id",
+    "note",
+    "preferred_league",
+    "reviewed_at",
+    "reviewed_by",
+    "status",
+    "updated_at",
+    "user_id"
+   ]
+  },
+  "courts": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "name",
+    "updated_at",
+    "updated_by",
+    "venue_id"
+   ]
+  },
+  "custom_quote_audit": {
+   "kind": "table",
+   "columns": [
+    "action",
+    "created_at",
+    "id",
+    "new_status",
+    "notes",
+    "old_status",
+    "performed_by",
+    "quote_id"
+   ]
+  },
+  "custom_quote_requests": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "id",
+    "name",
+    "notes",
+    "product_id",
+    "quantity",
+    "status",
+    "team_name",
+    "user_id"
+   ]
+  },
+  "devices": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "device_name",
+    "device_token_hash",
+    "first_seen_at",
+    "id",
+    "installation_key_hash",
+    "last_ip_hash",
+    "last_seen_at",
+    "trust_state",
+    "updated_at",
+    "updated_by",
+    "user_agent_hash",
+    "user_id",
+    "validation_run_id"
+   ]
+  },
+  "divisions": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "league_id",
+    "name",
+    "season_id",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "engagement_poll_votes": {
+   "kind": "table",
+   "columns": [
+    "correct",
+    "created_at",
+    "id",
+    "option_id",
+    "points_earned",
+    "poll_id",
+    "user_id"
+   ]
+  },
+  "engagement_polls": {
+   "kind": "table",
+   "columns": [
+    "closes_at",
+    "correct_option_id",
+    "created_at",
+    "created_by",
+    "game_id",
+    "id",
+    "kind",
+    "options",
+    "points_award",
+    "question",
+    "status",
+    "updated_at"
+   ]
+  },
+  "event_outbox": {
+   "kind": "table",
+   "columns": [
+    "available_at",
+    "created_at",
+    "dead_lettered_at",
+    "entity_id",
+    "entity_type",
+    "event_type",
+    "id",
+    "league_id",
+    "payload",
+    "retries",
+    "status",
+    "trace_id"
+   ]
+  },
+  "fan_token_products": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "id",
+    "is_active",
+    "label",
+    "price_cad",
+    "sort_order",
+    "stripe_price_id",
+    "token_count",
+    "updated_at"
+   ]
+  },
+  "fan_token_transactions": {
+   "kind": "table",
+   "columns": [
+    "amount",
+    "category_slug",
+    "created_at",
+    "game_id",
+    "id",
+    "idempotency_key",
+    "recipient_player_id",
+    "season_id",
+    "stripe_event_id",
+    "stripe_payment_intent_id",
+    "type",
+    "user_id"
+   ]
+  },
+  "fan_token_wallets": {
+   "kind": "table",
+   "columns": [
+    "balance",
+    "created_at",
+    "id",
+    "total_awarded",
+    "total_purchased",
+    "updated_at",
+    "user_id"
+   ]
+  },
+  "feature_flags": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "description",
+    "enabled",
+    "key",
+    "updated_at"
+   ]
+  },
+  "game_event_ledger": {
+   "kind": "table",
+   "columns": [
+    "actor_id",
+    "created_at",
+    "event_type",
+    "game_id",
+    "id",
+    "idempotency_key",
+    "payload",
+    "revision",
+    "sequence",
+    "source",
+    "supersedes_event_id",
+    "voided_at",
+    "voided_by"
+   ]
+  },
+  "game_projection_current": {
+   "kind": "table",
+   "columns": [
+    "away_fouls",
+    "away_score",
+    "clock_running",
+    "clock_seconds",
+    "created_at",
+    "game_id",
+    "home_fouls",
+    "home_score",
+    "last_sequence",
+    "payload",
+    "period",
+    "rebuilt_at",
+    "revision",
+    "status",
+    "updated_at"
+   ]
+  },
+  "game_rosters": {
+   "kind": "table",
+   "columns": [
+    "active",
+    "created_at",
+    "created_by",
+    "game_id",
+    "id",
+    "player_id",
+    "team_id",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "games": {
+   "kind": "table",
+   "columns": [
+    "away_score",
+    "away_team_id",
+    "category",
+    "created_at",
+    "created_by",
+    "event_name",
+    "event_type",
+    "game_date",
+    "home_score",
+    "home_team_id",
+    "id",
+    "latency_mode",
+    "league_id",
+    "mic_up_series",
+    "notes",
+    "participant1_label",
+    "participant2_label",
+    "playback_asset_id",
+    "playback_provider",
+    "published",
+    "replay_mode",
+    "replay_monetization_enabled_at",
+    "replay_price",
+    "replay_quality_tier",
+    "require_signed_url",
+    "schedule_slot_id",
+    "season_id",
+    "status",
+    "stream_url",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "gamification_points": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "game_id",
+    "id",
+    "points",
+    "poll_id",
+    "reason",
+    "user_id"
+   ]
+  },
+  "highlight_clips": {
+   "kind": "table",
+   "columns": [
+    "away_score",
+    "clock_seconds",
+    "created_at",
+    "created_by",
+    "description",
+    "game_id",
+    "home_score",
+    "id",
+    "kind",
+    "media_url",
+    "occurred_at",
+    "period",
+    "player_id",
+    "thumbnail_url",
+    "title"
+   ]
+  },
+  "import_jobs": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "error_summary",
+    "failed_rows",
+    "id",
+    "inserted_rows",
+    "job_type",
+    "payload_summary",
+    "status",
+    "submitted_by",
+    "total_rows",
+    "updated_at"
+   ]
+  },
+  "ingest_jobs": {
+   "kind": "table",
+   "columns": [
+    "asset_path",
+    "confidence",
+    "created_at",
+    "created_by",
+    "error_detail",
+    "error_message",
+    "id",
+    "idempotency_key",
+    "kind",
+    "media_asset_id",
+    "parse_result",
+    "payload",
+    "publication_id",
+    "retry_count",
+    "source",
+    "state",
+    "submitted_by",
+    "updated_at"
+   ]
+  },
+  "ingress_buffer": {
+   "kind": "table",
+   "columns": [
+    "correlation_id",
+    "created_at",
+    "error_reason",
+    "id",
+    "last_retry_at",
+    "raw_input",
+    "retry_count",
+    "risk_score",
+    "source_type",
+    "status",
+    "user_id"
+   ]
+  },
+  "invoices": {
+   "kind": "table",
+   "columns": [
+    "amount",
+    "created_at",
+    "created_by",
+    "id",
+    "order_id",
+    "status",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "leaderboard_snapshots": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "league_id",
+    "payload",
+    "season_id",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "league_events": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "event_date",
+    "id",
+    "league_id",
+    "location",
+    "metadata",
+    "season_id",
+    "starts_at",
+    "status",
+    "title",
+    "updated_at",
+    "updated_by",
+    "venue_id"
+   ]
+  },
+  "leagues": {
+   "kind": "table",
+   "columns": [
+    "code",
+    "created_at",
+    "created_by",
+    "id",
+    "name",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "media_assets": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "league_id",
+    "metadata",
+    "status",
+    "title",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "media_publications": {
+   "kind": "table",
+   "columns": [
+    "archived_at",
+    "created_at",
+    "id",
+    "league_id",
+    "media_asset_id",
+    "metadata",
+    "needs_review",
+    "parser_confidence",
+    "parser_uncertain_fields",
+    "pinned_at",
+    "published_at",
+    "published_by",
+    "render_payload",
+    "scheduled_at",
+    "sort_at",
+    "sort_order",
+    "status",
+    "subtitle",
+    "surface",
+    "thumbnail_url",
+    "title",
+    "type",
+    "updated_at"
+   ]
+  },
+  "moderation_events": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "decision",
+    "id",
+    "reason",
+    "ref_id",
+    "ref_type",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "mvw_standings": {
+   "kind": "matview",
+   "columns": [
+    "games_played",
+    "league_id",
+    "losses",
+    "pts_against",
+    "pts_for",
+    "refreshed_at",
+    "season_id",
+    "team_id",
+    "team_name",
+    "win_pct",
+    "wins"
+   ]
+  },
+  "obs_commands": {
+   "kind": "table",
+   "columns": [
+    "acked_at",
+    "created_at",
+    "created_by",
+    "error_text",
+    "game_id",
+    "id",
+    "kind",
+    "payload",
+    "status"
+   ]
+  },
+  "omnihub_command_log": {
+   "kind": "table",
+   "columns": [
+    "acknowledged_at",
+    "action",
+    "command_id",
+    "execution_status",
+    "issued_at",
+    "issued_by",
+    "payload",
+    "received_at",
+    "response_payload",
+    "rollback_snapshot",
+    "target_file_allowlist"
+   ]
+  },
+  "order_items": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "order_id",
+    "qty",
+    "unit_price",
+    "updated_at",
+    "updated_by",
+    "variant_id"
+   ]
+  },
+  "orders": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "status",
+    "total",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "overlay_event_log": {
+   "kind": "table",
+   "columns": [
+    "event_type",
+    "game_id",
+    "id",
+    "payload",
+    "triggered_at",
+    "triggered_by"
+   ]
+  },
+  "overlay_game_state": {
+   "kind": "table",
+   "columns": [
+    "away_fouls",
+    "away_score",
+    "away_timeouts_left",
+    "bonus_away",
+    "bonus_home",
+    "clock_last_started_at",
+    "clock_running",
+    "clock_seconds",
+    "game_id",
+    "home_fouls",
+    "home_score",
+    "home_timeouts_left",
+    "last_event_at",
+    "last_event_text",
+    "lower_third_subtext",
+    "lower_third_text",
+    "overlay_theme",
+    "period",
+    "period_label",
+    "possession",
+    "shot_clock_seconds",
+    "show_lower_third",
+    "show_sponsor_bug",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "payment_attempts": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "order_id",
+    "provider",
+    "provider_ref",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "player_biometric_snapshots": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "fatigue_level",
+    "game_id",
+    "heart_rate_bpm",
+    "id",
+    "player_id",
+    "recorded_at",
+    "source",
+    "stamina_pct"
+   ]
+  },
+  "player_game_stats": {
+   "kind": "table",
+   "columns": [
+    "ast",
+    "blk",
+    "created_at",
+    "created_by",
+    "fls",
+    "game_id",
+    "id",
+    "min",
+    "player_id",
+    "pts",
+    "reb",
+    "stl",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "player_profile_headshots": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "cropped_asset_id",
+    "id",
+    "idempotency_key",
+    "original_asset_id",
+    "player_id",
+    "review_reason",
+    "status",
+    "updated_at",
+    "updated_by",
+    "validation_result"
+   ]
+  },
+  "player_registration_submissions": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "payload",
+    "status",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "player_token_leaderboard": {
+   "kind": "table",
+   "columns": [
+    "category_breakdown",
+    "game_id",
+    "id",
+    "last_updated",
+    "player_id",
+    "season_id",
+    "total_tokens"
+   ]
+  },
+  "players": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "display_name",
+    "height",
+    "id",
+    "is_suspended",
+    "jersey_number",
+    "league_id",
+    "merged_at",
+    "merged_into",
+    "position",
+    "profile_id",
+    "suspension_reason",
+    "team_id",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "ppv_invites": {
+   "kind": "table",
+   "columns": [
+    "code",
+    "created_at",
+    "expires_at",
+    "game_id",
+    "generated_by",
+    "id",
+    "ip_address",
+    "is_comp",
+    "note",
+    "used_at",
+    "used_by"
+   ]
+  },
+  "product_variants": {
+   "kind": "table",
+   "columns": [
+    "color",
+    "created_at",
+    "created_by",
+    "id",
+    "product_id",
+    "size",
+    "sku",
+    "stock_qty",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "products": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "league_id",
+    "name",
+    "price",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "profiles": {
+   "kind": "table",
+   "columns": [
+    "avatar_url",
+    "bio",
+    "created_at",
+    "created_by",
+    "display_name",
+    "full_name",
+    "id",
+    "onboarding_completed_at",
+    "preferred_league",
+    "primary_role_intent",
+    "profile_public",
+    "stripe_customer_id",
+    "stripe_subscription_id",
+    "subscription_ends_at",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "promo_codes": {
+   "kind": "table",
+   "columns": [
+    "active",
+    "code",
+    "created_at",
+    "created_by",
+    "discount_percent",
+    "id",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "publish_jobs": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "destination",
+    "id",
+    "idempotency_key",
+    "media_asset_id",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "purchase_entitlements": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "entitlement_type",
+    "id",
+    "ref_id",
+    "status",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "review_queue": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "payload",
+    "ref_id",
+    "review_type",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "reward_catalog": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "credit_cost",
+    "id",
+    "name",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "reward_claims": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "idempotency_key",
+    "reward_id",
+    "status",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "rls_audit": {
+   "kind": "table",
+   "columns": [
+    "action",
+    "created_at",
+    "detail",
+    "id",
+    "schema_name",
+    "table_name",
+    "triggered_by"
+   ]
+  },
+  "rule_conflicts": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "league_id",
+    "status",
+    "title",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "schedule_slots": {
+   "kind": "table",
+   "columns": [
+    "court_id",
+    "created_at",
+    "created_by",
+    "ends_at",
+    "id",
+    "league_id",
+    "season_id",
+    "starts_at",
+    "status",
+    "updated_at",
+    "updated_by",
+    "venue_id"
+   ]
+  },
+  "seasons": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "league_id",
+    "name",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "shadow_projection_reconciliation": {
+   "kind": "table",
+   "columns": [
+    "canonical_payload",
+    "created_at",
+    "details",
+    "id",
+    "idempotency_key",
+    "ref_id",
+    "scope",
+    "shadow_payload",
+    "status"
+   ]
+  },
+  "share_assets": {
+   "kind": "table",
+   "columns": [
+    "clip_id",
+    "created_at",
+    "created_by",
+    "id",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "social_destinations": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "handle",
+    "id",
+    "is_active",
+    "network",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "sponsor_exposure_report_v2": {
+   "kind": "view",
+   "columns": [
+    "campaign",
+    "exposure_count",
+    "exposure_type",
+    "first_seen_at",
+    "game_id",
+    "last_seen_at",
+    "overlay_slot",
+    "sponsor_id"
+   ]
+  },
+  "sponsor_exposures": {
+   "kind": "table",
+   "columns": [
+    "campaign",
+    "exposure_type",
+    "game_id",
+    "id",
+    "idempotency_key",
+    "ledger_event_id",
+    "occurred_at",
+    "overlay_slot",
+    "payload",
+    "session_id",
+    "sponsor_id",
+    "user_id"
+   ]
+  },
+  "sponsor_impressions": {
+   "kind": "table",
+   "columns": [
+    "game_id",
+    "id",
+    "kind",
+    "occurred_at",
+    "sponsor_id",
+    "user_id"
+   ]
+  },
+  "sponsor_slots": {
+   "kind": "table",
+   "columns": [
+    "active",
+    "background_color",
+    "click_url",
+    "created_at",
+    "ends_at",
+    "id",
+    "league_id",
+    "logo_url",
+    "name",
+    "starts_at",
+    "tagline",
+    "text_color",
+    "updated_at",
+    "weight"
+   ]
+  },
+  "standings_projection": {
+   "kind": "table",
+   "columns": [
+    "id",
+    "league_id",
+    "losses",
+    "payload",
+    "points_against",
+    "points_for",
+    "rebuilt_at",
+    "season_id",
+    "team_id",
+    "ties",
+    "wins"
+   ]
+  },
+  "stat_categories": {
+   "kind": "table",
+   "columns": [
+    "code",
+    "created_at",
+    "created_by",
+    "id",
+    "name",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "stat_line_submissions": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "game_id",
+    "id",
+    "idempotency_key",
+    "payload",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "store_order_audit": {
+   "kind": "table",
+   "columns": [
+    "action",
+    "created_at",
+    "id",
+    "new_status",
+    "old_status",
+    "order_id",
+    "performed_by"
+   ]
+  },
+  "store_order_items": {
+   "kind": "table",
+   "columns": [
+    "color",
+    "created_at",
+    "id",
+    "order_id",
+    "product_id",
+    "quantity",
+    "size",
+    "unit_price_cents"
+   ]
+  },
+  "store_orders": {
+   "kind": "table",
+   "columns": [
+    "amount_subtotal_cents",
+    "amount_total_cents",
+    "created_at",
+    "customer_email",
+    "id",
+    "idempotency_key",
+    "shipping_address",
+    "status",
+    "stripe_checkout_session_id",
+    "stripe_payment_intent_id",
+    "updated_at",
+    "user_id"
+   ]
+  },
+  "store_products": {
+   "kind": "table",
+   "columns": [
+    "_deleted",
+    "_modified",
+    "active",
+    "badge",
+    "category",
+    "colors",
+    "description",
+    "id",
+    "image_url",
+    "is_custom",
+    "league_id",
+    "name",
+    "price_cents",
+    "sizes"
+   ]
+  },
+  "stream_access_sessions": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "device_token_hash",
+    "entitlement_id",
+    "expires_at",
+    "first_seen_at",
+    "game_id",
+    "id",
+    "idempotency_key",
+    "installation_key_hash",
+    "ip_hash",
+    "last_seen_at",
+    "max_expires_at",
+    "resumed_from_session_id",
+    "revoked_reason",
+    "session_status",
+    "status",
+    "updated_at",
+    "updated_by",
+    "user_agent_hash",
+    "user_id",
+    "validation_run_id"
+   ]
+  },
+  "stream_admin_config": {
+   "kind": "table",
+   "columns": [
+    "active_game_id",
+    "collection_id",
+    "created_at",
+    "created_by",
+    "id",
+    "is_live",
+    "live_ended_at",
+    "live_started_at",
+    "playback_asset_id",
+    "source",
+    "title",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "stream_chat_messages": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "game_id",
+    "id",
+    "message",
+    "status",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "stream_comments": {
+   "kind": "table",
+   "columns": [
+    "body",
+    "created_at",
+    "game_id",
+    "id",
+    "moderation_reason",
+    "status",
+    "stream_session_id",
+    "user_id",
+    "validation_run_id"
+   ]
+  },
+  "stream_entitlements": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "expires_at",
+    "game_id",
+    "id",
+    "idempotency_key",
+    "issued_at",
+    "order_id",
+    "replay_tier",
+    "revoked_at",
+    "starts_at",
+    "status",
+    "updated_at",
+    "updated_by",
+    "user_id",
+    "validation_run_id"
+   ]
+  },
+  "stream_evidence_events": {
+   "kind": "table",
+   "columns": [
+    "actor_id",
+    "attributes",
+    "category",
+    "correlation_id",
+    "created_at",
+    "entitlement_id",
+    "event_type",
+    "game_id",
+    "id",
+    "idempotency_key",
+    "occurred_at",
+    "outcome",
+    "severity",
+    "stream_access_session_id",
+    "stream_session_id",
+    "validation_run_id"
+   ]
+  },
+  "stream_playback_providers": {
+   "kind": "table",
+   "columns": [
+    "config",
+    "created_at",
+    "id",
+    "is_active",
+    "name",
+    "updated_at"
+   ]
+  },
+  "stream_playback_tokens": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "expires_at",
+    "game_id",
+    "id",
+    "max_expires_at",
+    "playback_mode",
+    "provider",
+    "revoked_at",
+    "session_id",
+    "signed_token",
+    "user_id"
+   ]
+  },
+  "stream_rate_limits": {
+   "kind": "table",
+   "columns": [
+    "count",
+    "key",
+    "scope",
+    "updated_at",
+    "window_started_at"
+   ]
+  },
+  "stream_reactions": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "game_id",
+    "id",
+    "reaction_type",
+    "status",
+    "stream_session_id",
+    "user_id",
+    "validation_run_id"
+   ]
+  },
+  "stream_sessions": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "current_viewers",
+    "ended_at",
+    "game_id",
+    "id",
+    "peak_viewers",
+    "started_at",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "stream_sources": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "game_id",
+    "id",
+    "ingest_last_checked_at",
+    "ingest_status",
+    "is_public_source",
+    "provider_name",
+    "risk_flags",
+    "source_classification",
+    "source_label",
+    "source_ref_encrypted",
+    "source_type",
+    "source_url",
+    "updated_at",
+    "updated_by",
+    "validation_run_id"
+   ]
+  },
+  "stream_watermark_events": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "event_type",
+    "id",
+    "payload",
+    "stream_access_session_id",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "stripe_events": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "error_detail",
+    "event_type",
+    "id",
+    "payload",
+    "processed_at",
+    "status",
+    "stripe_event_id"
+   ]
+  },
+  "sync_events": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "payload",
+    "source",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "team_game_stats": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "game_id",
+    "id",
+    "payload",
+    "team_id",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "team_memberships": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "jersey_number",
+    "position",
+    "role",
+    "season_id",
+    "status",
+    "team_id",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "teams": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "division_id",
+    "id",
+    "league_id",
+    "logo_url",
+    "name",
+    "record",
+    "season_id",
+    "status",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "token_award_categories": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "emoji",
+    "id",
+    "is_active",
+    "label",
+    "slug",
+    "sort_order"
+   ]
+  },
+  "user_role_assignments": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "created_by",
+    "id",
+    "league_id",
+    "role",
+    "updated_at",
+    "updated_by",
+    "user_id"
+   ]
+  },
+  "v_ingest_reconciliation": {
+   "kind": "view",
+   "columns": [
+    "anomaly_class",
+    "description",
+    "detected_at",
+    "ref_id"
+   ]
+  },
+  "validation_runs": {
+   "kind": "table",
+   "columns": [
+    "artifact_json_path",
+    "artifact_md_path",
+    "created_at",
+    "environment",
+    "finished_at",
+    "game_id",
+    "id",
+    "source_classification",
+    "started_at",
+    "status",
+    "summary",
+    "updated_at"
+   ]
+  },
+  "venues": {
+   "kind": "table",
+   "columns": [
+    "address",
+    "created_at",
+    "created_by",
+    "id",
+    "name",
+    "updated_at",
+    "updated_by"
+   ]
+  },
+  "viewer_counters": {
+   "kind": "table",
+   "columns": [
+    "active_entitled_viewer_count",
+    "game_id",
+    "last_computed_at",
+    "validation_run_id"
+   ]
+  },
+  "vw_orphan_league_games": {
+   "kind": "view",
+   "columns": [
+    "created_at",
+    "game_date",
+    "id",
+    "league_id",
+    "participant1_label",
+    "participant2_label"
+   ]
+  },
+  "watch_parties": {
+   "kind": "table",
+   "columns": [
+    "created_at",
+    "game_id",
+    "host_user_id",
+    "id",
+    "join_code",
+    "max_members",
+    "name",
+    "status",
+    "updated_at"
+   ]
+  },
+  "watch_party_members": {
+   "kind": "table",
+   "columns": [
+    "id",
+    "joined_at",
+    "user_id",
+    "watch_party_id"
+   ]
+  },
+  "webhook_inbox": {
+   "kind": "table",
+   "columns": [
+    "error_detail",
+    "event_id",
+    "event_type",
+    "id",
+    "idempotency_key",
+    "object_id",
+    "payload",
+    "processed_at",
+    "provider",
+    "received_at",
+    "status"
+   ]
+  }
+ },
+ "foreignKeys": {
+  "ai_weekly_digest": {
+   "league_id": "leagues"
+  },
+  "audit_logs": {
+   "validation_run_id": "validation_runs"
+  },
+  "broadcast_markers": {
+   "game_id": "games",
+   "ledger_event_id": "game_event_ledger"
+  },
+  "career_stat_projection": {
+   "league_id": "leagues",
+   "season_id": "seasons"
+  },
+  "cart_items": {
+   "cart_id": "carts",
+   "variant_id": "product_variants"
+  },
+  "clips": {
+   "game_id": "games",
+   "media_asset_id": "media_assets"
+  },
+  "coach_approval_requests": {
+   "reviewed_by": "auth.users",
+   "user_id": "auth.users"
+  },
+  "courts": {
+   "venue_id": "venues"
+  },
+  "custom_quote_audit": {
+   "performed_by": "auth.users",
+   "quote_id": "custom_quote_requests"
+  },
+  "custom_quote_requests": {
+   "product_id": "store_products",
+   "user_id": "auth.users"
+  },
+  "devices": {
+   "validation_run_id": "validation_runs"
+  },
+  "divisions": {
+   "league_id": "leagues",
+   "season_id": "seasons"
+  },
+  "engagement_poll_votes": {
+   "poll_id": "engagement_polls"
+  },
+  "engagement_polls": {
+   "game_id": "games"
+  },
+  "event_outbox": {
+   "league_id": "leagues"
+  },
+  "fan_token_wallets": {
+   "user_id": "auth.users"
+  },
+  "game_event_ledger": {
+   "game_id": "games",
+   "supersedes_event_id": "game_event_ledger"
+  },
+  "game_projection_current": {
+   "game_id": "games"
+  },
+  "game_rosters": {
+   "game_id": "games",
+   "player_id": "players",
+   "team_id": "teams"
+  },
+  "games": {
+   "away_team_id": "teams",
+   "home_team_id": "teams",
+   "league_id": "leagues",
+   "schedule_slot_id": "schedule_slots",
+   "season_id": "seasons"
+  },
+  "gamification_points": {
+   "game_id": "games",
+   "poll_id": "engagement_polls"
+  },
+  "highlight_clips": {
+   "game_id": "games",
+   "player_id": "players"
+  },
+  "ingest_jobs": {
+   "media_asset_id": "media_assets",
+   "publication_id": "media_publications",
+   "submitted_by": "auth.users"
+  },
+  "invoices": {
+   "order_id": "orders"
+  },
+  "leaderboard_snapshots": {
+   "league_id": "leagues",
+   "season_id": "seasons"
+  },
+  "league_events": {
+   "created_by": "auth.users",
+   "league_id": "leagues",
+   "updated_by": "auth.users"
+  },
+  "media_assets": {
+   "league_id": "leagues"
+  },
+  "media_publications": {
+   "league_id": "leagues",
+   "media_asset_id": "media_assets"
+  },
+  "obs_commands": {
+   "game_id": "games"
+  },
+  "order_items": {
+   "order_id": "orders",
+   "variant_id": "product_variants"
+  },
+  "overlay_game_state": {
+   "game_id": "games"
+  },
+  "payment_attempts": {
+   "order_id": "orders"
+  },
+  "player_game_stats": {
+   "game_id": "games",
+   "player_id": "players"
+  },
+  "player_profile_headshots": {
+   "player_id": "players"
+  },
+  "players": {
+   "league_id": "leagues",
+   "merged_into": "players",
+   "profile_id": "profiles",
+   "team_id": "teams"
+  },
+  "product_variants": {
+   "product_id": "products"
+  },
+  "products": {
+   "league_id": "leagues"
+  },
+  "publish_jobs": {
+   "media_asset_id": "media_assets"
+  },
+  "reward_claims": {
+   "reward_id": "reward_catalog"
+  },
+  "rule_conflicts": {
+   "league_id": "leagues"
+  },
+  "schedule_slots": {
+   "court_id": "courts",
+   "league_id": "leagues",
+   "season_id": "seasons",
+   "venue_id": "venues"
+  },
+  "seasons": {
+   "league_id": "leagues"
+  },
+  "share_assets": {
+   "clip_id": "clips"
+  },
+  "sponsor_exposures": {
+   "game_id": "games",
+   "ledger_event_id": "game_event_ledger",
+   "sponsor_id": "sponsor_slots"
+  },
+  "sponsor_impressions": {
+   "game_id": "games",
+   "sponsor_id": "sponsor_slots"
+  },
+  "sponsor_slots": {
+   "league_id": "leagues"
+  },
+  "standings_projection": {
+   "league_id": "leagues",
+   "season_id": "seasons",
+   "team_id": "teams"
+  },
+  "stat_line_submissions": {
+   "game_id": "games"
+  },
+  "store_order_audit": {
+   "order_id": "store_orders",
+   "performed_by": "auth.users"
+  },
+  "store_order_items": {
+   "order_id": "store_orders",
+   "product_id": "store_products"
+  },
+  "store_orders": {
+   "user_id": "auth.users"
+  },
+  "store_products": {
+   "league_id": "leagues"
+  },
+  "stream_access_sessions": {
+   "entitlement_id": "stream_entitlements",
+   "game_id": "games",
+   "resumed_from_session_id": "stream_access_sessions",
+   "validation_run_id": "validation_runs"
+  },
+  "stream_admin_config": {
+   "active_game_id": "games"
+  },
+  "stream_chat_messages": {
+   "game_id": "games"
+  },
+  "stream_comments": {
+   "game_id": "games",
+   "stream_session_id": "stream_access_sessions",
+   "user_id": "auth.users",
+   "validation_run_id": "validation_runs"
+  },
+  "stream_entitlements": {
+   "game_id": "games",
+   "validation_run_id": "validation_runs"
+  },
+  "stream_evidence_events": {
+   "actor_id": "auth.users",
+   "entitlement_id": "stream_entitlements",
+   "game_id": "games",
+   "stream_access_session_id": "stream_access_sessions",
+   "stream_session_id": "stream_sessions"
+  },
+  "stream_playback_tokens": {
+   "session_id": "stream_access_sessions"
+  },
+  "stream_reactions": {
+   "game_id": "games",
+   "stream_session_id": "stream_access_sessions",
+   "user_id": "auth.users",
+   "validation_run_id": "validation_runs"
+  },
+  "stream_sessions": {
+   "game_id": "games"
+  },
+  "stream_sources": {
+   "game_id": "games",
+   "validation_run_id": "validation_runs"
+  },
+  "stream_watermark_events": {
+   "stream_access_session_id": "stream_access_sessions"
+  },
+  "team_game_stats": {
+   "game_id": "games",
+   "team_id": "teams"
+  },
+  "team_memberships": {
+   "season_id": "seasons",
+   "team_id": "teams"
+  },
+  "teams": {
+   "division_id": "divisions",
+   "league_id": "leagues",
+   "season_id": "seasons"
+  },
+  "validation_runs": {
+   "game_id": "games"
+  },
+  "viewer_counters": {
+   "game_id": "games",
+   "validation_run_id": "validation_runs"
+  },
+  "watch_parties": {
+   "game_id": "games"
+  },
+  "watch_party_members": {
+   "watch_party_id": "watch_parties"
+  }
+ }
+}

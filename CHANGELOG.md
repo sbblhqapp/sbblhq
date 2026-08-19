@@ -1,8 +1,20 @@
-<!-- Version: v1.9.5 | Date: 2026-08-16 | Status: Current -->
+<!-- Version: v1.9.6 | Date: 2026-08-19 | Status: Current -->
 # CHANGELOG
 
 All notable changes to SBBL HQ are documented in this file.
 Versioning follows [semantic versioning](https://semver.org) with UTC date stamps.
+
+---
+
+## [1.9.6] - 2026-08-19
+
+### Added & Fixed — P10 Division Ingestion, Schema Guard Closure & CI Streamlining
+
+- **P10 Division Ingestion & Verification (`1ca72d56-16fa-4012-9cd1-857ebb185d84`):** Logged official final score (Riverside / OVRBRK 64 – Northstar P10 61) and ingested 20 player stat lines into production Supabase DB. Verified population across Scores, Schedules, Stats, Leaderboards, and Teams tabs.
+- **Contract Schema Guard Closure:** Closed `orders.metadata` exemption in `src/test/worker-schema-contract.test.ts` following live production migration `20260818150000_orders_add_metadata.sql`.
+- **AppHome League Derivation:** Updated `handlePublicHome` in `src/worker/routes/public.ts` to derive `league_code` directly from `games.league_id`, ensuring games with `season_id IS NULL` render properly.
+- **CI Workflow Consolidation:** Streamlined duplicate workflow triggers to eliminate GitHub Actions queue congestion, reducing PR check runtime from 30m+ down to 3-4 minutes.
+- **Tests:** Added `src/test/p10-division-scores.test.ts` to ensure point summation and game invariant contracts.
 
 ---
 

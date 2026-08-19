@@ -12,6 +12,7 @@ export default defineConfig({
     '**/task5.spec.ts',
     '**/test_checkout.spec.ts',
     '**/live-data-visual-proof.spec.ts',
+    '**/streaming.spec.ts',
     '**/node_modules/**',
   ],
   timeout: 30_000,
@@ -25,9 +26,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: process.env.CI
-      ? `npx vite preview --host 127.0.0.1 --port ${port}`
-      : `npm run dev -- --host 127.0.0.1 --port ${port}`,
+    command: `npm run dev -- --host 127.0.0.1 --port ${port}`,
     env: {
       VITE_E2E_BYPASS_ADMIN: 'true',
     },

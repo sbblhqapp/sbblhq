@@ -165,9 +165,11 @@ export async function handlePublicHome({ req, admin }: HandlerCtx) {
       // Same schema contract as handlePublicSchedule above: games has no
       // scheduled_at and no venue_id — time/venue/court come from the linked
       // schedule_slots row, the date from games.game_date.
+      // League code is derived directly from games.league_id (leagues(code)),
+      // preventing games with season_id IS NULL from being silently dropped.
       .from("games")
       .select(
-        "id,home_team_id,away_team_id,status,home_score,away_score,game_date,schedule_slots(starts_at,venues(name),courts(name)),season_id,seasons(league_id,leagues(code))",
+        "id,home_team_id,away_team_id,status,home_score,away_score,game_date,schedule_slots(starts_at,venues(name),courts(name)),league_id,leagues(code),season_id,seasons(league_id,leagues(code))",
       )
       .in("status", ["live", "upcoming", "final"])
       .order("game_date", { ascending: true })
@@ -213,6 +215,12 @@ export async function handlePublicHome({ req, admin }: HandlerCtx) {
 
   const allGames = (gamesRes.data ?? []).map(
     (row: Record<string, unknown>) => {
+      const slot = row.schedule_slots as {
+        starts_at?: string | null;
+        venues?: { name?: string } | null;
+        courts?: { name?: string } | null;
+      } | null;
+      const gameLeagues = row.leagues as { code?: string } | null;
       const seasons = row.seasons as {
         league_id?: string;
         leagues?: { code?: string };
@@ -224,10 +232,14 @@ export async function handlePublicHome({ req, admin }: HandlerCtx) {
         status: String(row.status ?? "upcoming"),
         home_score: row.home_score as number | null,
         away_score: row.away_score as number | null,
-        scheduled_at: row.scheduled_at as string | null,
-        venue: (row.venues as { name?: string } | null)?.name ?? null,
-        court: (row.courts as { name?: string } | null)?.name ?? null,
-        league_code: (seasons?.leagues?.code ?? "").toUpperCase(),
+        starts_at: slot?.starts_at ?? (row.game_date as string | null),
+        venue: slot?.venues?.name ?? null,
+        court: slot?.courts?.name ?? null,
+        league_code: (
+          gameLeagues?.code ??
+          seasons?.leagues?.code ??
+          ""
+        ).toUpperCase(),
       };
     },
   );

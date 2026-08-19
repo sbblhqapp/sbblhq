@@ -25,7 +25,9 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${port}`,
+    command: process.env.CI
+      ? `npx vite preview --host 127.0.0.1 --port ${port}`
+      : `npm run dev -- --host 127.0.0.1 --port ${port}`,
     env: {
       VITE_E2E_BYPASS_ADMIN: 'true',
     },

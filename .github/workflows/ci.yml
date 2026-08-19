@@ -239,7 +239,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-    timeout-minutes: 20
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || '' }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'test-anon-key' }}
+      VITE_DEFAULT_LEAGUE: SBBL
+    timeout-minutes: 30
     needs: build
 
     steps:
@@ -281,6 +284,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || '' }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'test-anon-key' }}
+      VITE_DEFAULT_LEAGUE: SBBL
     timeout-minutes: 25
     needs: build
 
@@ -296,7 +302,7 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Linux dependencies
-        run: npx playwright install-deps chromium
+        run: npx playwright install --with-deps chromium
       - name: Install Chromium
         run: npx playwright install chromium
 

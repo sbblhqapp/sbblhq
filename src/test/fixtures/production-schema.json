@@ -698,6 +698,7 @@
     "created_by",
     "id",
     "idempotency_key",
+    "metadata",
     "status",
     "total",
     "updated_at",

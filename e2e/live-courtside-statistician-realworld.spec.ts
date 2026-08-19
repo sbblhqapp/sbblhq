@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-const ARTIFACT_DIR = 'C:/Users/sinyo/.gemini/antigravity/brain/1c08c1bc-fd03-40b7-8821-f36090c50ba5';
+const ARTIFACT_DIR = process.env.ARTIFACT_DIR ?? path.join(process.cwd(), 'test-results/artifacts');
+mkdirSync(ARTIFACT_DIR, { recursive: true });
 
 test.describe('Real-World Comprehensive Live Courtside Tabulation & Scoreboard Suite', () => {
   test('Complete 4-Quarter Match Simulation: Pre-Game, Walk-Ons, Box Score, Live Standings, Finalize, Reopen Correction, and Re-Finalize', async ({ page }) => {

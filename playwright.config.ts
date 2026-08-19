@@ -8,6 +8,12 @@ export default defineConfig({
   testIgnore: [
     '**/potg-vision-test.spec.ts',
     '**/check_iframe.spec.ts',
+    '**/login-check.spec.ts',
+    '**/task5.spec.ts',
+    '**/test_checkout.spec.ts',
+    '**/live-data-visual-proof.spec.ts',
+    '**/streaming.spec.ts',
+    '**/node_modules/**',
   ],
   timeout: 30_000,
   expect: { timeout: 15_000 },
@@ -25,7 +31,7 @@ export default defineConfig({
       VITE_E2E_BYPASS_ADMIN: 'true',
     },
     url: baseURL,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
   projects: [

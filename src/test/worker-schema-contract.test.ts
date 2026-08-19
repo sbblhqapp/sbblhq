@@ -59,10 +59,7 @@ const SRC = join(ROOT, 'src');
  * to production, so it is absent from the snapshot. Each entry MUST name the
  * migration that creates it. Remove the entry once the snapshot is refreshed.
  */
-const PENDING_MIGRATION_COLUMNS: Record<string, string[]> = {
-  // supabase/migrations/20260818150000_orders_add_metadata.sql
-  orders: ['metadata'],
-};
+const PENDING_MIGRATION_COLUMNS: Record<string, string[]> = {};
 
 type Objects = Record<string, { kind: string; columns: string[] }>;
 const OBJECTS = (snapshot as { objects: Objects }).objects;

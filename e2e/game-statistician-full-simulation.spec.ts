@@ -1,7 +1,10 @@
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 import { expect, seedSuperAdminSession, test } from '../playwright-fixture';
 
 const GAME_ID = 'cccccccc-3333-4333-8333-333333333333';
-const ARTIFACT_DIR = 'C:/Users/sinyo/.gemini/antigravity/brain/1c08c1bc-fd03-40b7-8821-f36090c50ba5';
+const ARTIFACT_DIR = process.env.ARTIFACT_DIR ?? path.join(process.cwd(), 'test-results/artifacts');
+mkdirSync(ARTIFACT_DIR, { recursive: true });
 
 test.describe('Game Statistician Courtside UX Simulation', () => {
   test('simulates end-to-end game scoring, player stat attribution & live standings shift', async ({

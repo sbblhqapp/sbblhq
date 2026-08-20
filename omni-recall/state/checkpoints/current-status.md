@@ -1,9 +1,9 @@
 # Current Status
 
-- date: 2026-08-16
+- date: 2026-08-19
 - omni_recall_status: active
 - historical_backfill_status: complete
-- correction_ledger_status: active — 9 records (see wiki/corrections/README.md)
+- correction_ledger_status: active — 10 records (see wiki/corrections/README.md)
 - source_index_status: active
 - canonical_blueprint_status: active
 

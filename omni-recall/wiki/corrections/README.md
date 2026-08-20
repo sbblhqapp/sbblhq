@@ -21,4 +21,5 @@ Each correction should capture:
 - [[2026-08-09-ops-console-uuid-elimination.md]] — Every Manual Ops form resolves identifiers automatically instead of requiring a raw UUID; uncovered and fixed a live rule-10 league-code-resolution violation in `handleImportRoute`.
 - [[2026-08-15-unified-live-scoring-tabulation-and-player-stats.md]] — Unified Courtside Game Tabulation & Player Stats Engine: Real-time 1-tap scoring, courtside walk-on additions, synchronized broadcast overlays, and historical tabulation.
 - [[2026-08-16-autonomous-30-day-archived-media-purge.md]] — Autonomous 30-Day Archived Media Database & Storage Purge Engine: Daily Cloudflare Worker cron (03:00 UTC), physical bucket deletion (`media`, `league-media`), immunity protection, and mobile-optimized Ops UI.
+- [[2026-08-19-canonical-monetization-model.md]] — Canonical Monetization Invariant: Exactly two revenue models project-wide — $3.99 CAD per PPV livestream and $6.99 CAD per Player Premium Season Pass ($0 Free roster participation).
 

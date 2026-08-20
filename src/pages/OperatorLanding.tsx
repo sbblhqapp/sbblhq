@@ -4,7 +4,7 @@ import { BookingModal } from '@/components/BookingModal';
 
 const CONFIG = {
   calendlyUrl: 'https://calendly.com/apex-sbbl/demo',
-  email: '[EMAIL TBD]',
+  email: 'info-outreach@sbbl-hq.icu',
   hero: {
     title: 'Run Your League. Stream Every Game. Monetize Your Fans.',
     subtext: 'SBBL HQ is the all-in-one platform for community basketball leagues. Setup in 24 hours. Revenue from day one.',
@@ -22,25 +22,25 @@ const CONFIG = {
   ],
   pricing: {
     starter: {
-      name: 'Starter',
-      subtitle: 'Single Event',
-      price: '[PRICE TBD]',
-      features: ['1 game', 'PPV ticketing', 'highlight replay'],
-      cta: 'Get Started',
+      name: 'Fan PPV Access',
+      subtitle: 'Single Game Livestream',
+      price: '$3.99 CAD',
+      features: ['1 live game broadcast', 'Full HD streaming', 'Live stats & chat', 'Instant replay access'],
+      cta: 'Book Demo',
     },
     season: {
-      name: 'Season',
+      name: 'Player Premium Pass',
       subtitle: 'Full League Season',
-      price: '[PRICE TBD]',
-      features: ['Unlimited games', 'standings + stats', 'fan subscriptions', 'priority support'],
+      price: '$6.99 CAD',
+      features: ['Full season player pass', 'Verified career stats & box scores', 'Leaderboard inclusion', '10% store discount'],
       cta: 'Book Demo',
-      badge: 'Most Popular',
+      badge: 'Season Pass',
     },
     enterprise: {
-      name: 'Enterprise',
-      subtitle: 'White Glove',
-      price: 'Contact Us',
-      features: ['We run everything', 'custom branding', 'multi-league support'],
+      name: 'Roster Player',
+      subtitle: 'League Registration',
+      price: 'Free',
+      features: ['Team roster listing', 'Basic game participation', 'Live score tracking'],
       cta: 'Contact Us',
     },
   },
@@ -105,7 +105,7 @@ export default function OperatorLanding() {
                 <p className="mt-1 text-sm text-muted-foreground">{CONFIG.pricing.starter.subtitle}</p>
                 <p className="mt-4 text-2xl font-bold">{CONFIG.pricing.starter.price}</p>
                 <ul className="mt-4 space-y-2 text-sm text-muted-foreground">{CONFIG.pricing.starter.features.map((item) => <li key={item}>• {item}</li>)}</ul>
-                <button type="button" className="mt-6 w-full rounded-md border border-border px-4 py-2 font-medium">{CONFIG.pricing.starter.cta}</button>
+                <button type="button" onClick={() => setIsModalOpen(true)} className="mt-6 w-full rounded-md border border-border px-4 py-2 font-medium">{CONFIG.pricing.starter.cta}</button>
               </article>
 
               <article className="relative rounded-lg border-2 border-primary bg-card p-6">

@@ -1,8 +1,26 @@
-<!-- Version: v1.9.6 | Date: 2026-08-19 | Status: Current -->
+<!-- Version: v1.9.7 | Date: 2026-08-27 | Status: Current -->
 # CHANGELOG
 
 All notable changes to SBBL HQ are documented in this file.
 Versioning follows [semantic versioning](https://semver.org) with UTC date stamps.
+
+---
+
+## [1.9.7] - 2026-08-27
+
+### Added — SBBL Spring Edition POTG Tabulation, Display Name Coalescing & Docs Sync
+
+- **SBBL Spring Edition POTG Tabulation:** Tabulated and finalized 5 Player of the Game matches from August 16 scorecards into `games`, `player_game_stats`, and `import_jobs`:
+  - GLS Titos (53) vs Young Bucks (51) — POTG: Nae De Vera (16 PTS, 8 REB, 4 AST)
+  - SPG Jrs. (61) vs Slam Drunks (41) — POTG: Patrick De Jesus (25 PTS, 4 REB, 6 AST)
+  - Swishers (47) vs Tita Hunters (38) — POTG: Jamie Saddalan (12 PTS, 7 REB, 5 AST)
+  - Almighty (67) vs Rawstar (58) — POTG: Carlo Galve (#15, 18 PTS, 3 REB, 5 AST)
+  - PTB Jrs. (59) vs Rebelde Jrs. (58) — POTG: Jordan Fangonilo (#17, 22 PTS, 6 REB, 5 AST)
+- **Swishers Team Entity:** Created `Swishers` under SBBL Spring Edition in division P10 with published status (ID: `683301c0-2e1a-465a-8241-b3de554eee6f`).
+- **RPC Display Name Coalescing Migration (`20260827000000_fix_player_display_name_coalesce.sql`):** Updated `get_stats_dashboard` and `get_leaderboards` RPCs to coalesce `players.display_name` first, fixing "Unknown" rendering for roster players without a linked auth profile.
+- **Team Standings Refresh:** Updated `teams.record` JSON across all 10 affected teams; refreshed `public.mvw_standings` materialized view concurrently.
+- **Canonical Font Guard Timeout:** Extended `canonical-font-guard.test.ts` timeout to 30 000 ms to prevent false positives from Windows filesystem scan latency.
+- **Omni-Recall & Repo Documentation Sync (post PR #115):** Updated `README.md` to v1.9.7, `omni-recall/state/checkpoints/current-status.md`, `omni-recall/wiki/corrections/README.md`, and added correction record `2026-08-27-sbbl-spring-potg-tabulation-and-display-name-coalesce.md`.
 
 ---
 

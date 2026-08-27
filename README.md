@@ -1,4 +1,4 @@
-<!-- Version: v1.9.4 | Date: 2026-08-16 | Status: Current -->
+<!-- Version: v1.9.7 | Date: 2026-08-27 | Status: Current -->
 # SBBL HQ
 
 Three-league basketball super app by APEX Business Systems Ltd., Edmonton, Alberta
@@ -11,13 +11,14 @@ Three-league basketball super app by APEX Business Systems Ltd., Edmonton, Alber
 
 ## Stack
 
-- **Frontend:** Vite + React + TypeScript (strict mode enabled; see tsconfig.app.json)
+- **Frontend:** Vite + React + TypeScript (strict mode enabled; see `tsconfig.app.json`)
 - **Live Scoring & Tabulation:** 1-Click Game Launch, `<LiveScoreboard />`, `<CourtsideQuickControls />`, `<PlayerStatsTracker />`, real-time OBS broadcast scorebug (`/overlay/:gameId`), and live projected standings preview (`public.fn_live_standings_preview`)
+- **Monetization & Invariants:** Canonical 2-tier monetization ($3.99 CAD per PPV livestream, $6.99 CAD per Player Premium Season Pass, $0 Free roster player and fan accounts)
 - **Performance & Web Vitals:** Cumulative Layout Shift (CLS) zero-shift target (<0.01), layout-reserved skeleton containers
 - **Styling:** Tailwind CSS (dark-first, `#C9A84C` gold accent, mobile-first responsive architecture)
 - **Database:** Supabase (PostgreSQL + Realtime + Auth + Storage)
 - **Hosting:** Cloudflare Workers (Scheduled Crons, Edge API Gateway) — NOT Vercel
-- **Payments:** Stripe
+- **Payments:** Stripe (Webhook signature verification + Alberta 5% GST calculation)
 - **CI/CD:** GitHub Actions → Cloudflare deploy
 
 ---
@@ -98,10 +99,9 @@ All documentation lives in [`docs/`](docs/README.md). Key entry points:
 | Features | [Live Scoring & Stats](docs/features/LIVE_SCORING_AND_PLAYER_STATS_v1.0.0.md) · [Stream Gating](docs/features/STREAM_GATING_v1.7.0.md) · [Stats Pipeline](docs/features/STATS_PIPELINE_v1.2.0.md) · [Pipeline Map](docs/features/PIPELINE_MAP_v1.3.0.md) · [Broadcast Overlay & Engagement](docs/features/BROADCAST_OVERLAY_ENGAGEMENT_v1.0.0.md) |
 | Onboarding | [Developer Onboarding](docs/onboarding/DEVELOPER_ONBOARDING_v1.0.0.md) |
 | Quality | [Release Gate 2026-04-11](docs/quality/RELEASE_GATE_AUDIT_2026-04-11_v1.4.0.md) · [Livestream Integrity Audit](docs/quality/LIVESTREAM_INGEST_BROADCAST_SYSTEM_INTEGRITY_AUDIT_2026-04-09_v1.0.0.md) |
-| Policies | [One Device](ONE_DEVICE_POLICY.md) · [Paywall Enforcement](PAYWALL_ENFORCEMENT_POLICY.md) · [Resume Policy](RESUME_POLICY.md) · [Stream Test Strategy](STREAM_TEST_STRATEGY.md) |
 
-→ **[Full documentation index](docs/README.md)**
+---
 
-## Production Supabase contract
+## License
 
-Production Supabase for SBBL-HQ is self-hosted. Do not use Supabase Cloud project refs or hosted-only assumptions for production. The production app-facing URL is supplied by Worker `SUPABASE_URL` / public config and currently targets `https://SBBL_SUPABASE_PROJECT_REF.supabase.co`; browser code may use only publishable/anon keys. `SUPABASE_SERVICE_ROLE_KEY` is server-only, must be set with `wrangler secret put SUPABASE_SERVICE_ROLE_KEY`, and privileged validation routes such as `/ops/validation-runs` require existing `super_admin` auth first. JR is the sole super-admin unless repo policy changes. Self-hosted operations own OS/service updates, Docker service updates, Postgres maintenance, backups/restore, monitoring, uptime, and disaster recovery.
+Proprietary — APEX Business Systems Ltd., Edmonton, Alberta, Canada © 2026. All rights reserved.

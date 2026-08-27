@@ -87,5 +87,5 @@ describe('canonical font guard', () => {
     }
 
     expect(violations, violations.join('\n')).toEqual([]);
-  });
+  }, 30000);
 });

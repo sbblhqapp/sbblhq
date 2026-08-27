@@ -1,13 +1,13 @@
 # Current Status
 
-- date: 2026-08-19
+- date: 2026-08-27
 - omni_recall_status: active
 - historical_backfill_status: complete
-- correction_ledger_status: active — 10 records (see wiki/corrections/README.md)
+- correction_ledger_status: active — 11 records (see wiki/corrections/README.md)
 - source_index_status: active
 - canonical_blueprint_status: active
 
-## Repo State (verified 2026-08-16)
+## Repo State (verified 2026-08-27)
 
 - **Canonical remote:** `https://github.com/sbblhqapp/sbblhq` (migrated
   2026-08-09 from the archived `apexbusiness-systems/sbbl-hq`; see
@@ -15,13 +15,13 @@
   [[2026-08-09-repo-migration-sbblhqapp]]).
 - **Deployed:** Cloudflare Worker `sbbl-hq-worker`, zone `sbbl-hq.icu`.
 - **Latest merged & delivered work:**
-  1. Unified Courtside Game Tabulation & Player Stats Engine (PR #11 merged, E2E statistician simulation validated 100/100).
-  2. Autonomous 30-Day Archived Media Database & Storage Purge Engine (Daily Worker cron 03:00 UTC, physical bucket removal, mobile-first Ops interface).
+  1. **PR #115:** Enforce canonical platform monetization model ($3.99 CAD PPV & $6.99 CAD Season Pass) with 100% test coverage and zero operator tier drift.
+  2. **SBBL Spring Edition POTG Tabulation & Stats Pipeline:** 5 Player of the Game matches finalized with full box scores, player awards, team standings updates, and RPC display name coalescing (`20260827000000_fix_player_display_name_coalesce.sql`).
 
 ## Known backfill gap
 
 Correction records in `wiki/corrections/` run from 2026-07-18 through
-2026-07-22, then resume with this session's entries dated 2026-08-09.
+2026-07-22, then resume with entries dated 2026-08-09 onwards.
 Commits between those dates (POTG/Groq-vision hardening, player-identity
 merge, pipeline health telemetry, `player_game_stats` FK join fix, admin
 grant for `rondalesteve@gmail.com`, etc. — see `git log` on `main`) were

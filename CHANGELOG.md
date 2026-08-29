@@ -1,8 +1,25 @@
-<!-- Version: v1.9.7 | Date: 2026-08-27 | Status: Current -->
+<!-- Version: v1.9.8 | Date: 2026-08-28 | Status: Current -->
 # CHANGELOG
 
 All notable changes to SBBL HQ are documented in this file.
 Versioning follows [semantic versioning](https://semver.org) with UTC date stamps.
+
+---
+
+## [1.9.8] - 2026-08-28
+
+### Added — SBBL Season 12 Week 2 Schedule Ingestion & Media Pipeline Integration
+
+- **SBBL Season 12 Week 2 Schedule Ingestion (32 Games):** Parsed and ingested all 32 games for Sunday, August 30, 2026 across two venues into `schedule_slots` and `games`:
+  - **La Liga Sports Complex** (Court 1: 12 games, Court 2: 10 games, Court 3: 1 game)
+  - **Crawford School** (Court 1: 9 games)
+- **Division Expansions & Zero Duplicate Guarantees:**
+  - Provisioned divisions `P8` (`0afa80c0-fff2-4105-afa3-db6a7b2a688b`) and `P6` (`f96dc49d-d00b-4a2f-b6be-ccf9f8e8c628`) under Season 12.
+  - Reconciled existing divisions `P10`, `P9`, `35 Up`, and `P7` with zero duplicate division or team entities.
+- **Media Pipeline Publication:**
+  - Uploaded official Week 2 schedule graphic to Supabase Storage: `media/schedule/sbbl-season-12-week-2-aug-30-2026.jpg`.
+  - Created published `media_assets` (`d4b28bf8-ab13-41ee-ad58-020218c18815`) and `media_publications` (`d5dc10ab-32aa-45e6-80d5-c4737484bb57`) records on the `media_feed` surface.
+- **Venues & Courts Provisioning:** Created venue and court records for `La Liga Sports Complex` (Courts 1, 2, 3) and `Crawford School` (Court 1) linked to all schedule slots.
 
 ---
 

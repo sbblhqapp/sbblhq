@@ -25,6 +25,7 @@ import CheerMeter from '@/components/CheerMeter';
 import { CASLNudge } from '@/components/CASLNudge';
 import { fetchPublicHome } from '@/lib/api/public';
 import { fetchPreflightSnapshot } from '@/lib/api/preflight';
+import { markHighlight } from '@/lib/api/highlights';
 import { isBiometricOverlayEnabled, isFanTokenSystemEnabled, isMicUpSeriesEnabled, isViewerPreflightEnabled } from '@/lib/feature-flags';
 import { fetchLatestBiometrics } from '@/lib/api/biometrics';
 import { fetchLeaderboardByGame, fetchTokenCategories, fetchTokenProducts, fetchTokenWallet, startTokenPurchase, awardTokens } from '@/lib/api/tokens';
@@ -1082,10 +1083,32 @@ const LivePage = () => {
     }
   };
 
-  const handleClip = () => {
-    setClipSaved(true);
-    toast.success('Clip saved to your Media library');
-    setTimeout(() => setClipSaved(false), 2500);
+  const handleClip = async () => {
+    if (!session || !user) {
+      toast.error('Please sign in to clip highlights');
+      return;
+    }
+    const targetGameId = activeGameId && activeGameId !== 'broadcast' ? activeGameId : liveGame?.id && liveGame.id !== 'broadcast' ? liveGame.id : null;
+    if (!targetGameId) {
+      toast.error('No active game selected to clip');
+      return;
+    }
+    try {
+      await markHighlight({
+        game_id: targetGameId,
+        title: liveGame ? `Clip: ${liveGame.homeTeam.name} vs ${liveGame.awayTeam.name}` : undefined,
+      });
+      setClipSaved(true);
+      toast.success('Clip saved to your Media library');
+      setTimeout(() => setClipSaved(false), 2500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'clip_failed';
+      if (message === 'forbidden' || message === 'unauthorized') {
+        toast.error('Operator access required to mark highlights');
+      } else {
+        toast.error('Could not save clip');
+      }
+    }
   };
 
   const handleSendChat = () => {

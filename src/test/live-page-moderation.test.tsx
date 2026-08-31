@@ -12,6 +12,11 @@ const streamModerationMocks = vi.hoisted(() => ({
     status: action === 'restore' ? 'active' : 'hidden',
   })),
   resetStreamReactions: vi.fn(async () => ({ ok: true, gameId: 'game-live-1', reset: true })),
+  markHighlight: vi.fn(async (_input) => ({ ok: true, highlight: { id: 'hl-1' } })),
+}));
+
+vi.mock('@/lib/api/highlights', () => ({
+  markHighlight: streamModerationMocks.markHighlight,
 }));
 
 vi.mock('@/hooks/use-auth', () => ({
@@ -119,5 +124,11 @@ describe('Live page moderation controls', () => {
 
     fireEvent.click(screen.getByText('Reset Reactions'));
     await waitFor(() => expect(streamModerationMocks.resetStreamReactions).toHaveBeenCalledWith('game-live-1', 'token'));
+
+    fireEvent.click(screen.getByText('Clip'));
+    await waitFor(() => expect(streamModerationMocks.markHighlight).toHaveBeenCalledWith({
+      game_id: 'game-live-1',
+      title: 'Clip: Home Team vs Away Team',
+    }));
   });
 });
